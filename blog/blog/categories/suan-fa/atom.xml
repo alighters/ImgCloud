@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: 算法 | alighters]]></title>
+  <link href="http://alighters.github.io/blog/blog/categories/suan-fa/atom.xml" rel="self"/>
+  <link href="http://alighters.github.io/blog/"/>
+  <updated>2020-07-28T00:22:56+08:00</updated>
+  <id>http://alighters.github.io/blog/</id>
+  <author>
+    <name><![CDATA[alighters]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[位运算之巧用]]></title>
+    <link href="http://alighters.github.io/blog/blog/2016/10/27/bit-skill/"/>
+    <updated>2016-10-27T14:12:00+08:00</updated>
+    <id>http://alighters.github.io/blog/blog/2016/10/27/bit-skill</id>
+    <content type="html"><![CDATA[<p>之前接触到位运算的时候，总是似懂非懂，一脸萌比。最近花点时间，细细研究，其实发现也相当简单。下面来举两个相当实用的例子，来彻底掌握位运算。</p>
+
+<h2>异或实现交换</h2>
+
+<p>在涉及到两个数的相交换的诸多实现中，一个不错的及格的算法，就是利用加法来做。如下：</p>
+
+<!-- more -->
+
+
+<pre><code>a = a + b;
+b = a - b;
+a = a - b;
+</code></pre>
+
+<p>写出这个的话，还算不错，再来个惊艳的，就是利用位运算，如下：</p>
+
+<pre><code>a = a ^ b;
+b = a ^ b;
+a = a ^ b;
+</code></pre>
+
+<p>如此工整的代码也是没谁了。初始乍看起来，是一脸懵逼，不知道其到底原理何在？
+首先，说说加法。加法与减法是相对的，因为相加得到的和为固定值，再利用减法可以逆转回去，根据其中相加两个数的一个值，得到另一个值。这里，我称之为加减法的可逆转性。
+再者，来看看异或运算，是如何做到的？先看如下的表格，来理解异或运算的特性。</p>
+
+<table>
+<thead>
+<tr>
+<th> Tables        </th>
+<th style="text-align:center;"> Col1  </th>
+<th style="text-align:center;"> Col2  </th>
+<th style="text-align:center;"> Col3  </th>
+<th style="text-align:center;"> Col4  </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td> a             </td>
+<td style="text-align:center;"> 0     </td>
+<td style="text-align:center;"> 1     </td>
+<td style="text-align:center;"> 0     </td>
+<td style="text-align:center;"> 1     </td>
+</tr>
+<tr>
+<td> b             </td>
+<td style="text-align:center;"> 0     </td>
+<td style="text-align:center;"> 1     </td>
+<td style="text-align:center;"> 1     </td>
+<td style="text-align:center;"> 0     </td>
+</tr>
+<tr>
+<td> c(result)     </td>
+<td style="text-align:center;"> 0     </td>
+<td style="text-align:center;"> 0     </td>
+<td style="text-align:center;"> 1     </td>
+<td style="text-align:center;"> 1     </td>
+</tr>
+</tbody>
+</table>
+
+
+<p>其中，c 为 a ^ b 的值，可以看出异或最直白的表述为相同为假（即0），不同为真（即1）。另外，也可以运算得出 a = b ^ c, b = a ^ c。我称之为真正的可逆性，即不再需要其他运算符，即可再转换回去。</p>
+
+<p>这时，结合上述的表格，便可理解上述的异或交换算法了。（若是没理解，也不用着急，算法就是慢慢理解，慢慢消化的，可在闲时慢慢回想，揣摩这段简单的代码。）</p>
+
+<h2>实现两个数的相加</h2>
+
+<p>这是在网上看到的一道<a href="https://www.h5jun.com/post/multiply7.html">面试题</a>，需要不采用加减乘除的四则运算，来实现一个数的 7倍。</p>
+
+<p>7 倍的问题可以转换为(8 - 1) 的问题，即左移 3 位，然后加上自身的负数。最终还是转换为如何实现加法的问题。所以这里只关注如何实现加法的核心问题。</p>
+
+<p>首先，先以两个二进制数相加，查看其有什么特征。</p>
+
+<p>  0 1 1 0
+  0 1 0 0
+这两个数相加，可得 1010, 期间可拆分为两个过程，相对应的位数为 0 与 1 或 1 与 0 相加所得为 1 的过程一；相对应的位数为 1 与 1 相加所得为 10，即需要发生进位的过程二。（0 与 0 相加为 0，不需要考虑）。</p>
+
+<p>过程一可转换为异或运算，过程二转换为与运算，然后左移一位，来发生进位。若此时所得的数为 0，则表示没有进位发生，上步异或的结果，即为运算的结果；若不为 0，则表示有进位，则需要拿这个数，与相与所得的数，来重复过程一，过程二。写出的算法如下：</p>
+
+<pre><code class="java">public static int add(int x, int y) {
+  int result;
+  while (x != 0) {
+      result = x ^ y;
+      x = (x &amp; y) &lt;&lt; 1;
+      y = result;
+  }
+  return y;
+}
+</code></pre>
+
+<p>测试所得，对负数也是没问题的，（这里只要不发生溢出，都是没有问题的）。纠其原因，还是计算机在运算的时候，是采用补码的形式来运行的。另外补码的相加减，符号位也是参与运算的。</p>
+
+<h2>参考资料</h2>
+
+<ul>
+<li><a href="http://www.cnblogs.com/zhangziqiu/archive/2011/03/30/ComputerCode.html">原码, 反码, 补码 详解</a></li>
+<li><a href="https://www.h5jun.com/post/multiply7.html">别人家的面试题：不用加减乘除，求整数的7倍</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[编程之法-字符串]]></title>
+    <link href="http://alighters.github.io/blog/blog/2016/10/27/algorithm-string/"/>
+    <updated>2016-10-27T14:11:00+08:00</updated>
+    <id>http://alighters.github.io/blog/blog/2016/10/27/algorithm-string</id>
+    <content type="html"><![CDATA[<h2>字符串的旋转</h2>
+
+<p>题：abcedf -> edfabc</p>
+
+<h3>1.蛮力移位</h3>
+
+<p>原理：将后一个位置的字符向前移动，第一个字符放置在最后的位置上。
+即分三步完成 bcedfa -> cedfab -> edfabc</p>
+
+<!-- more -->
+
+
+<h3>2. 三步反转</h3>
+
+<p>拆分为两段即 abc 与 edf，对他俩分别进行反转得到 cbafde；再对整个进行反转，得到结果</p>
+
+<p>练习：单词翻转
+“I am a student.&ldquo; -> "student. a am I&rdquo;.
+思路：按空格分隔，分别进行反转，再整理反转。</p>
+
+<h2>字符串的包含。</h2>
+
+<p>题：a: &ldquo;ABCD&rdquo;, b:&ldquo;BAD&rdquo; 则包含为true;
+    若b 是 ”BCE", 为 false;
+    若b 是 “AA", 为true. 即字符串b 中出现的字符都必须按在 a 中出现。</p>
+
+<h3>1.蛮力轮询</h3>
+
+<h3>2.排序后轮询</h3>
+
+<p>排序使用快排，需要 O(mlogm) + O(nlogn), 线性扫描需要 O(m+n)次操作。</p>
+
+<h3>3.素数相乘</h3>
+
+<p>原理：利用素数相乘取余数的结果来判断，是否存在。（若是余数为0，表示存在，若是余数不为0，则表示不存在）</p>
+
+<p>分步：
+1.将 a 中出现的字符对应到 26 个素数当中，并相乘得到结果
+2.遍历 b 中的字符，取得相应的素数，与上一步乘积的结果，取余进行判断。</p>
+
+<p>现实不可行：前16个素数相乘的结果会超出 long 能表示的结果。</p>
+
+<h3>4.位运算法</h3>
+
+<p>原理：将 a 中的字符存至 hash 表中，b 来进行获取判断。
+位运算：先用一个 int 来表示最终的结果，因为 Int 为32位，完全满足 26 个字符的要求，对 a 中的字符，对应 26 个字符的顺序进行移位放置 a 中。
+即 hash |= (1 &lt;&lt; a[i] - &lsquo;A&rsquo;)
+再进行 b 中判断的时候，直接进行相与，即可得到结果。</p>
+
+<h2>字符串的全排列</h2>
+
+<h3>1.递归实现</h3>
+
+<h3>2.字典序排列</h3>
+
+<p>原理：起点字典序最小的排列 1 ~ n 如 ”12345“；终点 n ~ 1, 如 ”54321“。 执行过程就是获取比当前字典序大的下一个排列。</p>
+
+<p>举例： 21543，
+1. 获得第一个升序的数字为 1
+2. 比 1 大，并在 1 右边的最小一个数自，得到 3
+3. 它俩交换，得到 23541，
+4. 翻转 541 ，得到 23145.</p>
+
+<p>两种解法的都一共有 n! 种情况，复杂度为 O(n!)。</p>
+
+<p>练习</p>
+
+<h3>1. 字典序的所有排列</h3>
+
+<p>如 &ldquo;ab&rdquo;, 任意排列为 aa, ab, ba，bb。</p>
+
+<p>采用递归的思想，当字符的个数为 2 时，输出结果。</p>
+
+<h3>2. 字符的所有组合</h3>
+
+<p>输入 &ldquo;abc&rdquo;, 组合有 a,b,c,ab,ac,bc,abc</p>
+
+<h3>3.序列的打印</h3>
+
+<p>(a),(b),&copy;
+(a,b),(a,c)(b,c)
+(a,b,c)</p>
+
+<h2>字符串转成整数</h2>
+
+<p>&ldquo;123&rdquo; -> 123</p>
+
+<h3>乘以进制10</h3>
+
+<p>其他问题：溢出，正负</p>
+
+<h2>回文判断</h2>
+
+<h3>1. 两头往中间</h3>
+
+<h3>2. 中间往两头</h3>
+
+<p>练习
+1. 链表回文
+2. 栈回文</p>
+
+<h2>最长回文子串</h2>
+
+<h3>中心扩展法</h3>
+
+<p>需要考虑奇数还是偶数</p>
+
+<h3>Manacher 算法</h3>
+
+<p>将字符串间隔添加特殊字符，变为一个长度为奇数长度的新的字符串。
+如 S[i]: # 1 # 2 # 2 # 1 # 2 # 3 # 2 # 1 #
+得 P[i]: 1 2 1 2 5 2 1 4 1 2 1 6 1 2 1 2 1
+其中 P[i] 来记录为字符 S[i] 为中心的最长回文子串向左或向右扩张的长度（包括 S[i]）</p>
+
+<p>一个利用中间变量特殊技巧，增加两个变量 id 和 mx, id 表示最大回文子串中心的位置，mx 为 id + P[id], 即最大回文子串的右边界。会得到一个重要的结论： 如果 mx > i, 那么 P[i] >= min(P[2 * id -i], mx - i)。</p>
+
+<h2>参考资料</h2>
+
+<ul>
+<li><a href="https://book.douban.com/subject/26641732/">编程之法</a></li>
+<li><a href="https://github.com/julycoding/The-Art-Of-Programming-By-July">The-Art-Of-Programming-By-July
+</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+</feed>

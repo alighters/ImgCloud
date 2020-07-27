@@ -1,0 +1,1063 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Android | alighters]]></title>
+  <link href="http://alighters.github.io/blog/blog/categories/android/atom.xml" rel="self"/>
+  <link href="http://alighters.github.io/blog/"/>
+  <updated>2020-07-28T00:22:56+08:00</updated>
+  <id>http://alighters.github.io/blog/</id>
+  <author>
+    <name><![CDATA[alighters]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[LeakCanary 浅析]]></title>
+    <link href="http://alighters.github.io/blog/blog/2018/03/16/leakcanary-learn/"/>
+    <updated>2018-03-16T16:46:00+08:00</updated>
+    <id>http://alighters.github.io/blog/blog/2018/03/16/leakcanary-learn</id>
+    <content type="html"><![CDATA[<h2>内存分析工具</h2>
+
+<p>关于内存分析，在 LeakCanary 之前，可以用到的工具主要以 MAT 为主，在新版的 AS 3.0 中，又提供了 Memory Profiler，可进一步帮助我们定位内存出现的问题。</p>
+
+<!-- more -->
+
+
+<blockquote><p><a href="https://developer.android.com/studio/profile/memory-profiler.html#HeapDump">Memory Profiler</a>
+<a href="https://developer.android.com/studio/preview/features/android-profiler.html">Android Profiler in Android Studio 3.0</a></p>
+
+<p><a href="https://joyrun.github.io/2016/08/08/AndroidMemoryLeak/">利用Android Studio、MAT对Android进行内存泄漏检测 - 悦跑圈技术团队的博客 | Joyrun&rsquo;s Blog</a></p>
+
+<p><a href="https://developer.android.com/studio/profile/memory-profiler.html">View the Java Heap and Memory Allocations with Memory Profiler | Android Studio</a></p></blockquote>
+
+<h2>原理描述</h2>
+
+<p>其监听了 Application 中的 activityLifeCallback，在此会对得到的 activity 添加弱引用的方式，根据其特点来判断是否发生泄露。当泄露时，则 dump 出一份内存快照，得到 hprof 数据，再利用 square 的 haha 库，在另外的进程中，进行解析并显示。</p>
+
+<h2>主要流程</h2>
+
+<h3>1.类的定位</h3>
+
+<p>在 Android 的 application onCreate 时，我们一般会调用 LeakCanary 的 install 方法，其所作的工作：</p>
+
+<ul>
+<li>1.通过 application 生成一个 AndroidRefWatcherBuilder</li>
+<li>2.注册监听的 service 为 DisplayLeakService</li>
+<li>3.设置排除的引用 AndroidExcludedRefs</li>
+<li>4.调用 AndroidRefWatcherBuilder 的 buildAndInstall 方法，其会调用到 ActivityRefWatcher 的 install 方法：</li>
+</ul>
+
+
+<pre><code class="java">  public static void install(Application application, RefWatcher refWatcher) {
+    new ActivityRefWatcher(application, refWatcher).watchActivities();
+  }
+</code></pre>
+
+<p>其会构造出 ActivityRefWatcher，然后调用其 watchActivities 方法：</p>
+
+<pre><code class="java">  public void watchActivities() {
+    // Make sure you don't get installed twice.
+    stopWatchingActivities();
+    application.registerActivityLifecycleCallbacks(lifecycleCallbacks);
+  }
+</code></pre>
+
+<p>这里主要的工作便是给 application 注册 ActivityLifecycleCallbacks，此类主要重写了 Application.ActivityLifecycleCallbacks 的 onActivityDestoryed 方法:</p>
+
+<pre><code class="java">@Override public void onActivityDestroyed(Activity activity) {
+ ActivityRefWatcher.this.onActivityDestroyed(activity);
+}
+</code></pre>
+
+<p>在它的 onActivityDestoryed 方法中，其主要调用 RefWatcher 类的 watch 方法，其对象便是传递进来的 activity。</p>
+
+<h3>2.类的监测</h3>
+
+<p>接下来便是关键的 RefWatcher 类了，在其 watch 方法中：</p>
+
+<pre><code class="java">public void watch(Object watchedReference, String referenceName) {
+ if (this == DISABLED) {
+   return;
+ }
+ checkNotNull(watchedReference, "watchedReference");
+ checkNotNull(referenceName, "referenceName");
+ final long watchStartNanoTime = System.nanoTime();
+ String key = UUID.randomUUID().toString();
+ retainedKeys.add(key);
+ final KeyedWeakReference reference =
+     new KeyedWeakReference(watchedReference, key, referenceName, queue);
+
+ ensureGoneAsync(watchStartNanoTime, reference);
+}
+</code></pre>
+
+<p>这里会将 watchedReference、referenceName、queue 包装成一个 KeyedWeakReference 对象。
+其中 queue 是一个成员变量 ReferenceQueue<Object> 的对象。而 KeyedWeakReference 是一个继承自 WeakReference 的类。</p>
+
+<p>关于 WeakReference 的官方描述：</p>
+
+<blockquote><p>Weak reference objects, which do not prevent their referents from being made finalizable, finalized, and then reclaimed. Weak references are most often used to implement canonicalizing mappings.</p>
+
+<p>Suppose that the garbage collector determines at a certain point in time that an object is weakly reachable. At that time it will atomically clear all weak references to that object and all weak references to any other weakly-reachable objects from which that object is reachable through a chain of strong and soft references. At the same time it will declare all of the formerly weakly-reachable objects to be finalizable. At the same time or at some later time it will enqueue those newly-cleared weak references that are registered with reference queues.</p></blockquote>
+
+<p>简单来说就是弱引用并不会影响对象的回收。当一个对象被回收之时，之前对此对象的持有弱引用的对象会被标记为 finalizable，与此同时或之后会将其添加至之前注册的 reference queue 中。</p>
+
+<p>这样的话，通过弱引用持有 activity，在 application 注册的 activitylifecallback 中，当 activity 退出时，在 referencequeue 里查询不在其中的 activity，此时，便确定了泄露的类。接下来便是 dump 出内存，来分析出泄露的路径了。</p>
+
+<h3>3.类的泄露定位</h3>
+
+<p>在 ensureGoneAsync 方法中，会执行如下方法：</p>
+
+<pre><code class="java">Retryable.Result ensureGone(final KeyedWeakReference reference, final long watchStartNanoTime) {
+ long gcStartNanoTime = System.nanoTime();
+ long watchDurationMs = NANOSECONDS.toMillis(gcStartNanoTime - watchStartNanoTime);
+
+ removeWeaklyReachableReferences();
+
+ if (debuggerControl.isDebuggerAttached()) {
+   // The debugger can create false leaks.
+   return RETRY;
+ }
+ if (gone(reference)) {
+   return DONE;
+ }
+ gcTrigger.runGc();
+ removeWeaklyReachableReferences();
+ if (!gone(reference)) {
+   long startDumpHeap = System.nanoTime();
+   long gcDurationMs = NANOSECONDS.toMillis(startDumpHeap - gcStartNanoTime);
+
+   File heapDumpFile = heapDumper.dumpHeap();
+   if (heapDumpFile == RETRY_LATER) {
+     // Could not dump the heap.
+     return RETRY;
+   }
+   long heapDumpDurationMs = NANOSECONDS.toMillis(System.nanoTime() - startDumpHeap);
+   heapdumpListener.analyze(
+       new HeapDump(heapDumpFile, reference.key, reference.name, excludedRefs, watchDurationMs,
+           gcDurationMs, heapDumpDurationMs));
+ }
+ return DONE;
+}
+</code></pre>
+
+<p>其中调用的 removeWeaklyReachableReferences 方法，则是对 refernceQueue 的排查：</p>
+
+<pre><code class="java">private void removeWeaklyReachableReferences() {
+ // WeakReferences are enqueued as soon as the object to which they point to becomes weakly
+ // reachable. This is before finalization or garbage collection has actually happened.
+ KeyedWeakReference ref;
+ while ((ref = (KeyedWeakReference) queue.poll()) != null) {
+   retainedKeys.remove(ref.key);
+ }
+}
+</code></pre>
+
+<p>这里从 queue 中，取出 KeyedWeakReference，并从 retainedKeys 集合中移除此 reference 对应的 key 值。</p>
+
+<p>而判断此 reference 是否移除则是通过 gone 方法判断：</p>
+
+<pre><code class="java">private boolean gone(KeyedWeakReference reference) {
+ return !retainedKeys.contains(reference.key);
+}
+</code></pre>
+
+<p>当集合中不包含此 WeakReference 对应的 key，则表示此弱引用持有的对象已被回收；否则表示有可能内存泄露。</p>
+
+<p>这里进行了再一步的判断，触发调用一下 gc 方法：</p>
+
+<pre><code class="java">gcTrigger.runGc();
+</code></pre>
+
+<p>而 gcTrigger 则是用的默认的 Default 实现：</p>
+
+<pre><code class="java">public interface GcTrigger {
+  GcTrigger DEFAULT = new GcTrigger() {
+    @Override public void runGc() {
+      // Code taken from AOSP FinalizationTest:
+      // https://android.googlesource.com/platform/libcore/+/master/support/src/test/java/libcore/
+      // java/lang/ref/FinalizationTester.java
+      // System.gc() does not garbage collect every time. Runtime.gc() is
+      // more likely to perfom a gc.
+      Runtime.getRuntime().gc();
+      enqueueReferences();
+      System.runFinalization();
+    }
+
+    private void enqueueReferences() {
+      // Hack. We don't have a programmatic way to wait for the reference queue daemon to move
+      // references to the appropriate queues.
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        throw new AssertionError();
+      }
+    }
+  };
+
+  void runGc();
+}
+</code></pre>
+
+<p>代码中通过 <code>Runtime.getRuntime().gc()</code> 来触发 gc，再将当前线程 sleep 100 毫秒，来保证弱引用被添加至引用队列中，则执行 <code>System.runFinalization()</code> 方法，则触发调用对象的 finalize 方法。</p>
+
+<p>再触发 <code>gcTrigger.runGc()</code> 后，再调用一次 <code>removeWeaklyReachableReferences</code>，若是对象还未消失，那表示对象已经是真的泄露了。则需要导出内存快照进行分析了。</p>
+
+<h3>4.Dump内存快照</h3>
+
+<p>生成 heapDumpFile, 则是由 heapDumper 接口来负责：</p>
+
+<pre><code class="java">File heapDumpFile = heapDumper.dumpHeap();
+</code></pre>
+
+<p>此 heapDumper 在 Android 中相关的实现，是由 AndroidHeapDumper 类实现：</p>
+
+<pre><code class="java">@Override public File dumpHeap() {
+ File heapDumpFile = leakDirectoryProvider.newHeapDumpFile();
+
+ if (heapDumpFile == RETRY_LATER) {
+   return RETRY_LATER;
+ }
+
+ FutureResult&lt;Toast&gt; waitingForToast = new FutureResult&lt;&gt;();
+ showToast(waitingForToast);
+
+ if (!waitingForToast.wait(5, SECONDS)) {
+   CanaryLog.d("Did not dump heap, too much time waiting for Toast.");
+   return RETRY_LATER;
+ }
+
+ Toast toast = waitingForToast.get();
+ try {
+   Debug.dumpHprofData(heapDumpFile.getAbsolutePath());
+   cancelToast(toast);
+   return heapDumpFile;
+ } catch (Exception e) {
+   CanaryLog.d(e, "Could not dump heap");
+   // Abort heap dump
+   return RETRY_LATER;
+ }
+}
+</code></pre>
+
+<p>因为这里是在主线程所做的 dump 工作，所以这里给了个 waiting 的 toast，之后便是利用 Debug 类中的 dumpHprofData 方法，来生成内存快照 hprof 的数据。</p>
+
+<p>然后利用注册的 heapdumpListener 的 analyze 方法进行分析生成的此  HeapDump 对象：</p>
+
+<pre><code class="java">@Override public void analyze(HeapDump heapDump) {
+ checkNotNull(heapDump, "heapDump");
+ HeapAnalyzerService.runAnalysis(context, heapDump, listenerServiceClass);
+}
+</code></pre>
+
+<p>这里会通过启动一个监听的 service（HeapAnalyzerService），而在 Android 中的 service 便是另一个进程的 serice。</p>
+
+<h3>5.引用分析</h3>
+
+<p>HeapAnalyzerService 是一个跨进程的 IntentSerice，在其 onHandleIntent 方法中:</p>
+
+<pre><code class="java">@Override protected void onHandleIntent(Intent intent) {
+ if (intent == null) {
+   CanaryLog.d("HeapAnalyzerService received a null intent, ignoring.");
+   return;
+ }
+ String listenerClassName = intent.getStringExtra(LISTENER_CLASS_EXTRA);
+ HeapDump heapDump = (HeapDump) intent.getSerializableExtra(HEAPDUMP_EXTRA);
+
+ HeapAnalyzer heapAnalyzer = new HeapAnalyzer(heapDump.excludedRefs);
+
+ AnalysisResult result = heapAnalyzer.checkForLeak(heapDump.heapDumpFile, heapDump.referenceKey);
+ AbstractAnalysisResultService.sendResultToListener(this, listenerClassName, heapDump, result);
+}
+</code></pre>
+
+<p>获取到 HeapDump 后，生成一个 HeapAnalyzer 后，利用其 checkForLeak 方法，检查 heapDumpFile 中关于 referenceKey 的引用，生成一个分析的结果 AnalysisResult。</p>
+
+<p>关于 checkForLeak 方法：</p>
+
+<pre><code class="java">/**
+* Searches the heap dump for a {@link KeyedWeakReference} instance with the corresponding key,
+* and then computes the shortest strong reference path from that instance to the GC roots.
+*/
+public AnalysisResult checkForLeak(File heapDumpFile, String referenceKey) {
+ long analysisStartNanoTime = System.nanoTime();
+
+ if (!heapDumpFile.exists()) {
+   Exception exception = new IllegalArgumentException("File does not exist: " + heapDumpFile);
+   return failure(exception, since(analysisStartNanoTime));
+ }
+
+ try {
+   HprofBuffer buffer = new MemoryMappedFileBuffer(heapDumpFile);
+   HprofParser parser = new HprofParser(buffer);
+   Snapshot snapshot = parser.parse();
+   deduplicateGcRoots(snapshot);
+
+   Instance leakingRef = findLeakingReference(referenceKey, snapshot);
+
+   // False alarm, weak reference was cleared in between key check and heap dump.
+   if (leakingRef == null) {
+     return noLeak(since(analysisStartNanoTime));
+   }
+
+   return findLeakTrace(analysisStartNanoTime, snapshot, leakingRef);
+ } catch (Throwable e) {
+   return failure(e, since(analysisStartNanoTime));
+ }
+}
+</code></pre>
+
+<p>这里开始利用 square 的 haha 库来开始解析 dump 出来的文件数据了。首先将 heapDumpFile 包装为 HprofBuffer，再利用 HprofParse 转换得到 Snapshot 数据。</p>
+
+<p>先利用 findLeakingReference 方法中，从 snapshot 中查看是否有 referenceKey。没有，则不存在泄露。</p>
+
+<p>若有的话，在 findLeakTrace 方法，来找到关于此类引用泄露的路径关系。</p>
+
+<pre><code class="java">private AnalysisResult findLeakTrace(long analysisStartNanoTime, Snapshot snapshot,
+   Instance leakingRef) {
+
+ ShortestPathFinder pathFinder = new ShortestPathFinder(excludedRefs);
+ ShortestPathFinder.Result result = pathFinder.findPath(snapshot, leakingRef);
+
+ // False alarm, no strong reference path to GC Roots.
+ if (result.leakingNode == null) {
+   return noLeak(since(analysisStartNanoTime));
+ }
+
+ LeakTrace leakTrace = buildLeakTrace(result.leakingNode);
+
+ String className = leakingRef.getClassObj().getClassName();
+
+ // Side effect: computes retained size.
+ snapshot.computeDominators();
+
+ Instance leakingInstance = result.leakingNode.instance;
+
+ long retainedSize = leakingInstance.getTotalRetainedSize();
+
+ // TODO: check O sources and see what happened to android.graphics.Bitmap.mBuffer
+ if (SDK_INT &lt;= N_MR1) {
+   retainedSize += computeIgnoredBitmapRetainedSize(snapshot, leakingInstance);
+ }
+
+ return leakDetected(result.excludingKnownLeaks, className, leakTrace, retainedSize,
+     since(analysisStartNanoTime));
+}
+</code></pre>
+
+<p>此方法中，</p>
+
+<h3>6.结果显示</h3>
+
+<p>之后将此结果 AnalysisResult 发送至 AbastractAnalysisResultService 的实现类中，此类的处理 Intent 方法如下：</p>
+
+<pre><code class="java">@Override protected final void onHandleIntent(Intent intent) {
+ HeapDump heapDump = (HeapDump) intent.getSerializableExtra(HEAP_DUMP_EXTRA);
+ AnalysisResult result = (AnalysisResult) intent.getSerializableExtra(RESULT_EXTRA);
+ try {
+   onHeapAnalyzed(heapDump, result);
+ } finally {
+   //noinspection ResultOfMethodCallIgnored
+   heapDump.heapDumpFile.delete();
+ }
+}
+</code></pre>
+
+<p>其 onHeapAnalyzed 抽象方法由 DisplayLeakService 来实现：</p>
+
+<pre><code class="java">@Override protected final void onHeapAnalyzed(HeapDump heapDump, AnalysisResult result) {
+ String leakInfo = leakInfo(this, heapDump, result, true);
+ CanaryLog.d("%s", leakInfo);
+
+ boolean resultSaved = false;
+ boolean shouldSaveResult = result.leakFound || result.failure != null;
+ if (shouldSaveResult) {
+   heapDump = renameHeapdump(heapDump);
+   resultSaved = saveResult(heapDump, result);
+ }
+
+ PendingIntent pendingIntent;
+ String contentTitle;
+ String contentText;
+
+ if (!shouldSaveResult) {
+   contentTitle = getString(R.string.leak_canary_no_leak_title);
+   contentText = getString(R.string.leak_canary_no_leak_text);
+   pendingIntent = null;
+ } else if (resultSaved) {
+   pendingIntent = DisplayLeakActivity.createPendingIntent(this, heapDump.referenceKey);
+
+   if (result.failure == null) {
+     String size = formatShortFileSize(this, result.retainedHeapSize);
+     String className = classSimpleName(result.className);
+     if (result.excludedLeak) {
+       contentTitle = getString(R.string.leak_canary_leak_excluded, className, size);
+     } else {
+       contentTitle = getString(R.string.leak_canary_class_has_leaked, className, size);
+     }
+   } else {
+     contentTitle = getString(R.string.leak_canary_analysis_failed);
+   }
+   contentText = getString(R.string.leak_canary_notification_message);
+ } else {
+   contentTitle = getString(R.string.leak_canary_could_not_save_title);
+   contentText = getString(R.string.leak_canary_could_not_save_text);
+   pendingIntent = null;
+ }
+ // New notification id every second.
+ int notificationId = (int) (SystemClock.uptimeMillis() / 1000);
+ showNotification(this, contentTitle, contentText, pendingIntent, notificationId);
+ afterDefaultHandling(heapDump, result, leakInfo);
+}
+</code></pre>
+
+<p>这里检查获取的 AnalysisResult，根据其 leakFound 和 failure 来查看其是否泄漏。若存在，则创建一个跳转至 DisplayLeakActivity 的 Notification 的 intent。</p>
+
+<p>在 DisplayLeakActivity 的界面中，用于显示关于 Leaks 的列表，而其 List 数据，则是通过运行一个后台线程来读取保存的泄露文件列表，之后更新 UI 显示。</p>
+
+<pre><code class="java">@Override public void run() {
+final List&lt;Leak&gt; leaks = new ArrayList&lt;&gt;();
+List&lt;File&gt; files = leakDirectoryProvider.listFiles(new FilenameFilter() {
+  @Override public boolean accept(File dir, String filename) {
+    return filename.endsWith(".result");
+  }
+});
+for (File resultFile : files) {
+  FileInputStream fis = null;
+  try {
+    fis = new FileInputStream(resultFile);
+    ObjectInputStream ois = new ObjectInputStream(fis);
+    HeapDump heapDump = (HeapDump) ois.readObject();
+    AnalysisResult result = (AnalysisResult) ois.readObject();
+    leaks.add(new Leak(heapDump, result, resultFile));
+  } catch (IOException | ClassNotFoundException e) {
+    // Likely a change in the serializable result class.
+    // Let's remove the files, we can't read them anymore.
+    boolean deleted = resultFile.delete();
+    if (deleted) {
+      CanaryLog.d(e, "Could not read result file %s, deleted it.", resultFile);
+    } else {
+      CanaryLog.d(e, "Could not read result file %s, could not delete it either.",
+          resultFile);
+    }
+  } finally {
+    if (fis != null) {
+      try {
+        fis.close();
+      } catch (IOException ignored) {
+      }
+    }
+  }
+}
+Collections.sort(leaks, new Comparator&lt;Leak&gt;() {
+  @Override public int compare(Leak lhs, Leak rhs) {
+    return Long.valueOf(rhs.resultFile.lastModified())
+        .compareTo(lhs.resultFile.lastModified());
+  }
+});
+mainHandler.post(new Runnable() {
+  @Override public void run() {
+    inFlight.remove(LoadLeaks.this);
+    if (activityOrNull != null) {
+      activityOrNull.leaks = leaks;
+      activityOrNull.updateUi();
+    }
+  }
+});
+}
+</code></pre>
+
+<h2>学习资料</h2>
+
+<ul>
+<li><a href="https://academy.realm.io/cn/posts/droidcon-ricau-memory-leaks-leakcanary/">用 LeakCanary 检测内存泄漏</a></li>
+<li><a href="http://blog.csdn.net/fearGod/article/details/46364599">Android System.gc()注意点 - CSDN博客</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Kotlin DSL 学习]]></title>
+    <link href="http://alighters.github.io/blog/blog/2018/03/02/kotlin-dsl-learn/"/>
+    <updated>2018-03-02T16:46:00+08:00</updated>
+    <id>http://alighters.github.io/blog/blog/2018/03/02/kotlin-dsl-learn</id>
+    <content type="html"><![CDATA[<p>DSL（domain-specific language），特定领域语言。wiki 关于 DSL 的定义如下：</p>
+
+<!-- more -->
+
+
+<blockquote><p>A domain-specific language (DSL) is a computer language specialized to a particular application domain. This is in contrast to a general-purpose language (GPL), which is broadly applicable across domains.</p></blockquote>
+
+<p>通俗来讲，其是指特定领域的语言，如 SQL, Gradle 等。另外其语言是可表达的且易读的。</p>
+
+<p>而 Kotlin 的语言特征，能够让我们更加方便地来实现 DSL。</p>
+
+<h2>语言特性</h2>
+
+<h3>1.Lambda Out of Parentheses</h3>
+
+<p>lambda 通常定义的格式为 （list of param types） -> returned type。最简单的格式则为 () -> Unit , 其中 Unit 等同于 Void。</p>
+
+<p>将一个  lambda 赋值给一个变量，最基本的格式如下：</p>
+
+<pre><code>val helloPrint: (String) -&gt; Unit = { println(it) }
+</code></pre>
+
+<p>调用此 lambda 的话：</p>
+
+<pre><code>helloPrint("Hello")
+</code></pre>
+
+<p>而多参数时，可如下使用：</p>
+
+<pre><code>val helloPrint: (String, Int) -&gt; Unit = { _, _ -&gt; println("Do nothing") } 
+helloPrint("Does not matter", 42) //output: Do nothing
+</code></pre>
+
+<p>其中参数不使用时，可用下划线来代替。</p>
+
+<p>关于 Lambda 的使用，这里假设有个函数 x()，当一个 lambda 是这个函数的最后一个参数时，其可以放置在函数括号的外面。另外，如果这个 lambda 是这个函数的唯一参数时，这个括号是可以省略的。这样，形如 x({…}) 的使用可以转换为 x(){}，再省略括号的话，我们得到 x{}。</p>
+
+<p>lambda 的使用则有如下的形式：</p>
+
+<pre><code>fun x( lambda: () -&gt; Unit ) { lambda() }
+</code></pre>
+
+<p>也可以写成单行如下：</p>
+
+<pre><code>fun x( lambda: () -&gt; Unit ) = lambda()
+</code></pre>
+
+<p>这样若是实现一个形如</p>
+
+<pre><code class="java">val person = person {
+    it.name = "John"
+    it.age = 25
+}
+</code></pre>
+
+<p>的 DSL 用法，其中 person 的声明如下：</p>
+
+<pre><code class="java">data class Person(var name: String? = null,
+                  var age: Int? = null,
+                  var address: Address? = null)
+</code></pre>
+
+<p>这时，则可以定义一个 person 的 lambda 定义：</p>
+
+<pre><code class="java">
+fun person(block: (Person) -&gt; Unit): Person {
+    val p = Person()
+    block(p)
+    return p
+}
+</code></pre>
+
+<h3>2.Lambdas with receivers</h3>
+
+<p>在上述的 person dsl 用法中，it 的使用来说每次都是累赘的。这时可以通过 Lambda with receivers ，来避免每次写它。</p>
+
+<p>它的意思是可以为 lambda 的声明指定一个接受者 receiver ，这样我们在 lambda 中只能访问这个 receiver 的所有非静态的公开函数。由于其限定了 receiver 的域，所以在 lambda 中，可以不必在提供前缀的 it 参数。</p>
+
+<p>所以，这里的格式为  () -> Unit 转变为了 X.()-> Unit。</p>
+
+<blockquote><p>注意，这里的写法只是用于方便书写，将这两种形式的代码转变为字节码时，可以发现其并没有区别的。仅仅在于其一个赋值给了变量 it，一个赋值给了变量 receiver。</p></blockquote>
+
+<p>将 person 的 fun 修改为：</p>
+
+<pre><code class="java">fun person(block: Person.() -&gt; Unit): Person {
+    val p = Person()
+    p.block()
+    return p
+}
+</code></pre>
+
+<p>简写成一行的话如下：</p>
+
+<pre><code class="java">fun person(block: Person.() -&gt; Unit): Person = Person().apply(block)
+</code></pre>
+
+<p>这时，person 的调用便可以简化：</p>
+
+<pre><code class="java">val person = person {
+    name = "John"
+    age = 25
+}
+</code></pre>
+
+<h3>3.Extension functions</h3>
+
+<p>此功能即为扩展函数，其表现就是给一些类提供额外的方法，来方便开发调用。其在 Java 中的实现则是通过静态函数来实现，参数便是 Kotlin 中对应的类。</p>
+
+<p>所以，要实现如下的 DSL :</p>
+
+<pre><code class="java">val person = person {
+    name = "John"
+    age = 25
+    address {
+        street = "Main Street"
+        number = 42
+        city = "London"
+    }
+}
+</code></pre>
+
+<p>在声明一个 Address：</p>
+
+<pre><code class="java">data class Address(var street: String? = null,
+                   var number: Int? = null,
+                   var city: String? = null)
+</code></pre>
+
+<p>便要对 person 类作拓展：</p>
+
+<pre><code class="java">fun Person.address(block: Address.() -&gt; Unit) {
+    address = Address().apply(block)
+}
+</code></pre>
+
+<h3>4.Builder Pattern</h3>
+
+<p>在上面的例子中，其参数都是为 var 定义，若需要为 val 定义，这里可以采用 builder 模式来实现。</p>
+
+<pre><code class="java">fun person(block: PersonBuilder.() -&gt; Unit): Person = PersonBuilder().apply(block).build()
+
+
+class PersonBuilder {
+
+    var name: String = ""
+
+    private var dob: Date = Date()
+    var dateOfBirth: String = ""
+        set(value) {
+            dob = SimpleDateFormat("yyyy-MM-dd").parse(value)
+        }
+
+    private var address: Address? = null
+
+    fun address(block: AddressBuilder.() -&gt; Unit) {
+        address = AddressBuilder().apply(block).build()
+    }
+
+    fun build(): Person = Person(name, dob, address)
+
+}
+
+class AddressBuilder {
+
+    var street: String = ""
+    var number: Int = 0
+    var city: String = ""
+
+    fun build() : Address = Address(street, number, city)
+
+}
+</code></pre>
+
+<p>如此，Person 的构造函数便可以使用 val 了，同时 builder 模式保证了类型安全的目的 （type-safe）。</p>
+
+<h3>5. Scope control: @DslMarker (Since 1.1)</h3>
+
+<p>因为 lambda 的实现都是匿名函数，其可以访问外部作用域。所以这里使用 @DslMarker ，可以达到收窄作用域的目的。如下，使用其声明一个 annotation class:</p>
+
+<pre><code class="java">@DslMarker
+annotation class PersonDsl
+</code></pre>
+
+<p>之后，将 @PersonDsl 添加在指定的类上，然后以此类定义的闭包，则不能访问外层作用域的内容。其会在编译器中得到错误的提示。</p>
+
+<h2>Anko</h2>
+
+<p>在 Android 中关于 Kotlin 的使用，集大成者便属于  <a href="https://github.com/Kotlin/anko">Kotlin/anko: Pleasant Android application development</a> 了，其主要包含的内容：</p>
+
+<ul>
+<li>Anko Commons:  关于 intents、dialogs、 logging 等轻量级的工具库</li>
+<li>Anko Layouts: 提供一个快速且类型安全的快速 Android 布局方法。</li>
+<li>Anko SQLite:  对 Android SQLite 支持的查询和集合转换的 DSL 功能。</li>
+<li>Anko Coroutines: 对 kotlinx.coroutines library 提供的工具类。</li>
+</ul>
+
+
+<p>其中，以最常用的 Anko Layouts 为例：</p>
+
+<pre><code class="java">verticalLayout {
+    val name = editText()
+    button("Say Hello") {
+        onClick { toast("Hello, ${name.text}!") }
+    }
+}
+</code></pre>
+
+<p>这里指定了一个竖直的 layout，在其中声明了一个名称为 name 的 editText，另有一个文本为 “Say hello” 的按钮，并为按钮添加一个点击的事件，事件可以弹出一个 toast，提示内容为 Hello 加 name 控件的文本。</p>
+
+<p>这里，相比以前的 xml 写法，这种写法简洁了许多。但要使用预览功能，这里需要另外安装 Anko Support Plugin 的插件，并采用 AnkoComponet 的方式书写 Anko Layout。</p>
+
+<p>其中关于 verticalLayout 的定义是在 CustomViews 类中。且此方法针对 ViewManager、Context 及 Activity 做了扩展，以 Actiivty 为例：</p>
+
+<pre><code class="java">inline fun Activity.verticalLayout(theme: Int = 0): LinearLayout = verticalLayout(theme) {}
+inline fun Activity.verticalLayout(theme: Int = 0, init: (@AnkoViewDslMarker _LinearLayout).() -&gt; Unit): LinearLayout {
+    return ankoView(`$$Anko$Factories$CustomViews`.VERTICAL_LAYOUT_FACTORY, theme, init)
+}
+</code></pre>
+
+<p>其中的 Lambda 为 _LinearLayout 类，关于 VERTICAL_LAYOUT_FACTORY 的定义如下：</p>
+
+<pre><code class="java">@PublishedApi
+internal object `$$Anko$Factories$CustomViews` {
+    val VERTICAL_LAYOUT_FACTORY = { ctx: Context -&gt;
+        val view = _LinearLayout(ctx)
+        view.orientation = LinearLayout.VERTICAL
+        view
+    }
+}
+</code></pre>
+
+<p>通过 lambda 的内容，来实例化一个 _LinearLayout，并指定其 orientation 为 LinearLayout.VERTICAL。另外， ankoView 方法，这里所做的工作：</p>
+
+<pre><code class="java">inline fun &lt;T : View&gt; Activity.ankoView(factory: (ctx: Context) -&gt; T, theme: Int, init: T.() -&gt; Unit): T {
+    val ctx = AnkoInternals.wrapContextIfNeeded(this, theme)
+    val view = factory(ctx)
+    view.init()
+    AnkoInternals.addView(this, view)
+    return view
+}
+</code></pre>
+
+<p>对 context 做以包装，通过 factory 方法得到 View , 再调用 view 的 lambda init 方法。之后通过 AnkoInternals 的 addView 方法对 view 进行添加操作，将其添加至视图中。</p>
+
+<p>回到上面的视图书写中。因为 Android 中的 view 都实现了接口 ViewManager，而这里的扩展方法，针对类便是以 Context、ViewManager、Activity 这三个为主。包含下面的 editText 方法：</p>
+
+<pre><code class="java">inline fun ViewManager.editText(): android.widget.EditText = editText() {}
+inline fun ViewManager.editText(init: (@AnkoViewDslMarker android.widget.EditText).() -&gt; Unit): android.widget.EditText {
+    return ankoView(`$$Anko$Factories$Sdk25View`.EDIT_TEXT, theme = 0) { init() }
+}
+</code></pre>
+
+<p>其中 editText 方法会调用到 ViewManager 的扩展，紧接着调用到下面的 editText，也就意味着 ankoView 方法的调用，所以在调用 editText 及 button 后，都会执行它们的 addView 方法。
+以上，便是简单的通过扩展来实现 view 布局的 DSL 了。另，还有其他更加复杂的扩展可再自行研究了。</p>
+
+<h2>Android KTX</h2>
+
+<p><a href="https://github.com/android/android-ktx">android/android-ktx</a>  其定义了一系列关于 Android App 开发中 Kotlin 的扩展，其目的是将我们用 Kotlin 开发 Android 代码更加简化，而并不是对已有的 Android API 添加新的功能。</p>
+
+<p>如：</p>
+
+<p><em>Kotlin:</em>
+<code>java
+val uri = Uri.parse(myUriString)
+</code></p>
+
+<p><em>Kotlin with Android KTX:</em></p>
+
+<pre><code class="java">val uri = myUriString.toUri()
+</code></pre>
+
+<p>这是一个 Extension functions 的应用，另外还有其他关于 Lambda 等的应用。不过其目前处于一个 preview 的开发应用，可对其未支持的 API 提 pr，进行贡献开发。</p>
+
+<h2>参考资料</h2>
+
+<ul>
+<li><a href="https://dzone.com/articles/kotlin-dsl-from-theory-to-practice">Kotlin DSL: From Theory to Practice - DZone Java</a></li>
+<li><a href="https://proandroiddev.com/writing-dsls-in-kotlin-part-1-7f5d2193f277">Writing DSLs in Kotlin (part 1) – ProAndroidDev</a></li>
+<li><a href="https://proandroiddev.com/writing-dsls-in-kotlin-part-2-cd9dcd0c4715">Writing DSLs in Kotlin (part 2) – ProAndroidDev</a></li>
+<li><a href="https://kotlinlang.org/docs/reference/lambdas.html#higher-order-functions">Higher-Order Functions and Lambdas - Kotlin Programming Language</a></li>
+<li><a href="https://kotlinlang.org/docs/reference/extensions.html">Extensions - Kotlin Programming Language</a></li>
+<li><a href="https://kotlinlang.org/docs/reference/type-safe-builders.html">Type-Safe Groovy-Style Builders - Kotlin Programming Language</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[图片加载理解之 UIL]]></title>
+    <link href="http://alighters.github.io/blog/blog/2017/01/25/understand-imageloader/"/>
+    <updated>2017-01-25T16:46:00+08:00</updated>
+    <id>http://alighters.github.io/blog/blog/2017/01/25/understand-imageloader</id>
+    <content type="html"><![CDATA[<p>针对Android 的图片加载，有着太多的细节问题，需要注意，本文针对 <a href="https://github.com/nostra13/Android-Universal-Image-Loader">Universal Image Loader</a> 的一些技术点，进行细致的剖析一番。由于涉及的内容，所以打算分成三个系列，分别从视图（View），数据（Cache）,网络等三个大的方面讲起：</p>
+
+<!-- more -->
+
+
+<h2>视图</h2>
+
+<h3>1. ImageLoader是如何实现对ImageView的包装的？</h3>
+
+<p>  1）ImageAware:针对 ImageView 行为的抽象&ndash;接口，获取 ImageView 的宽度、高度、scaleType、id；以及包装的ImageView，设定图片；
+  2）ViewAware: 抽象类，实现ImageAware。提供了ViewRef的属性，来持有ImageView的弱引用；实现方式：this.viewRef = new WeakReference<View>(view)。</p>
+
+<p>使用弱引用的目的，避免了异步耗时任务对 ImageView 的强引用，能够使 ImageView 能够被及时回收，防止内存泄露的发生（虽然很短暂的一瞬间）。</p>
+
+<h3>2. 在 ListView 加载显示图片的时候，当一个正在加载图片的 View 被滑出屏幕，ImageLoader 是否会取消此次下载图片任务，是如何取消的？</h3>
+
+<p>首先在加载获取图片时，是通过 ImageLoaderEngine 来进行提交进行的。在 ImageLoaderEngine 是启动线程池来异步加载图片，分别从内存、磁盘、网络中进行获取。而在这几步之前，会首先进行 View 是否被回收的判断，若是被回收，则抛出异常，并调用相应 listener 的 cancel 方法。</p>
+
+<h3>3. 在 ListView 的滑动过程中，如何暂停所有的图片加载任务？</h3>
+
+<p>在 ImageLoader 中，其提供了一个 <code>PauseOnScrollListener</code> 的类，在使用 <code>ListView</code> 的时，只需进行设置即可。</p>
+
+<p>其实现原理则是在通过调用  ImageLoader 的 <code>pause</code> 和 <code>resume</code> 方法，在调用图片加载的第一步会进行判断，是否设置了<strong>暂停</strong>状态，如果设置了，则会通过对象锁 <code>pauseLock</code> 的 wait 方法，来使当前图片加载线程处于阻塞状态；当调用了 <code>resume</code> 方法，则会调用了 <code>pauseLock</code> 的 notifyAll 方法，来恢复线程的执行。</p>
+
+<p>这样做的作用是达到 CPU 资源的充分利用，通过暂停异步图片加载的线程，来不使 UI 线程卡顿，提高 ListView 在滑动过程的流畅程度。</p>
+
+<h3>4. 怎样针对 View 的特定大小，处理获取到图片的大小？</h3>
+
+<p>在 ImageLoader 调用 <code>displayImage</code> 方法时，在指定相应的 ImageView 时，也可以传递一个 <code>ImageSize</code> 的参数，用来指定所需显示的图片的大小；若是不传的话，则会获取 ImageView 的 width 及 height，若获取到的值为 0，那么这个相应 <code>ImageSize</code> 的宽与高则会取屏幕的宽与高。</p>
+
+<p>另外，在对图片进行缓存时，生成相应的缓存 Key 的值是根据图片的 <code>uri</code> 和 <code>targetSize</code>  （指定的图片大小）来生成的，所以，不同大小的 ImageView 获取到的 bitmap 则是不同的，即从缓存中拿到的是不同的。</p>
+
+<p>这里，可以看出相应大小的 ImageView 与内存的缓存中的不同的 bitmap 是相对应的。而 diskCache 中则是以 uri 为键值的磁盘文件。另外，由磁盘文件转换为相应的 bitmap 则是对应下面问题的答案。</p>
+
+<h3>5. 图片是如何进行压缩的？</h3>
+
+<p>我们知道图片加载到内存之中，是以 Bitmap 的形式存在的。而在 Android App 中，内存是非常稀缺的资源。所以当加载大图片时，需要根据当前显示图片的控件，采用相应手段，只在内存中加载出来相应大小的 Bitmap ，来避免 <code>Out Of Memory</code> 的发生。</p>
+
+<p>这里采用 BitmapFactory 来进行图片文件转换至 Bitmap 对象，通过其 <code>decodeStream</code> 方法，若是我们传递的参数 Options，其指定了  <code>inJustDecodeBounds</code> 为 true， 则只会获取图片的大小（并不会生成 Bitmap 对象），其输出值为 Options 对象的 <code>outWidth</code> 和 <code>outHeight</code>。</p>
+
+<p>根据获取到的图片大小，以及我们要显示图片的 View 的大小，便可计算出我们需要对图片进行缩放的比例，即指定 Options 参数的 <code>inSampleSize</code> 的值。（此时 inJustDecodeBounds 的值为 false）这样获取到的 Bitmap 对象就是进行缩放调整过的图像。</p>
+
+<p>这一步便是 Android 中调整 Bitmap 大小，减少内存消耗关键性的一步。</p>
+
+<h2>数据</h2>
+
+<p>数据主要体现在对图片的缓存处理。UIL 对图片的缓存为三级缓存，一是内存，二是磁盘，三是网络（远程的服务器）。</p>
+
+<p>在内存中保存的为 Bitmap 对象，其是根据相应的 View 和 View 大小为 Key 值的。即加载的是同一张图片的两个不同大小的 View，会在内存缓存中存在针对这张图片的两个 Bitmap 对象。而磁盘中缓存的则只有这一张图片文件，即从远程服务器中下载到本地的图片文件。</p>
+
+<p>若是本地磁盘中没有响应的图片文件的话，则会通过网络从远程服务器中下载图片至本地。</p>
+
+<h2>网络</h2>
+
+<p>从网络中获取图片，UIL 使用的是 <code>HttpURLConnection</code>，来执行图片的获取下载。对应逻辑代码是在 <code>ImageLoader</code> 接口中，其定义了由图片 imageUri，来得到 InputStream 。另外以指定 Scheme 的方式（如 HTTP，FILE，ASSETS，DRAWABLE） 来得到图片的输入流。</p>
+
+<h2>总结</h2>
+
+<p>UIL 作为图片加载的入门库，其逻辑代码也是写的非常漂亮。结构化清晰，简单明了，对各个模块都由一个接口来定义，极大地丰富细节的实现，像不同的内存、磁盘缓存策略及图片下载获取方式，另外这些策略都可以在 ImageLoader 的配置策略进行修改。总之，这个库是一个不错的学习 Android 图片加载的资料。</p>
+
+<h2>参考资料</h2>
+
+<ul>
+<li><a href="https://github.com/nostra13/Android-Universal-Image-Loader/wiki/Useful-Info">ImageLoader Useful Info</a></li>
+<li><a href="https://github.com/nostra13/Android-Universal-Image-Loader">ImageLoader</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[理解 Multidex 生成]]></title>
+    <link href="http://alighters.github.io/blog/blog/2017/01/16/multidex-generate/"/>
+    <updated>2017-01-16T15:00:00+08:00</updated>
+    <id>http://alighters.github.io/blog/blog/2017/01/16/multidex-generate</id>
+    <content type="html"><![CDATA[<h2>介绍</h2>
+
+<p>在 Android 开发中，提到 65536 问题，就不得不提 Multidex 的解决方案。具体问题就是在 Android 打包的期间，是需要对 java 文件编译成 class 文件，class 文件信息过多而又冗余，这就再经过一步合并变成 dex 文件的过程（这一步是 dx 工具来处理的），其才是 Davilk 虚拟机加载识别的东西。而单个 dex 文件，其对方法数、字段数做了限制，即不能超过 65536，这便是问题的由来了。</p>
+
+<p>当然，解决这个问题也是很简单的。在 gradle 中启用 Multidex，在 application 中添加 Multidex.install 方法。乍以为万事大吉了，但在我们项目中还是遇到了 65536 的问题，主要是因为项目太大，在生成 mainDex 的过程中，还是出现了方法数超过了 65536 的问题，解决这个问题的思想是要将 mainDex 中的一些类移除至其它的 dex 中。那这一步，应该怎么玩呢？这里先看一些 dx 工具为我们提供了什么？</p>
+
+<!-- more -->
+
+
+<pre><code>  [--multi-dex [--main-dex-list=&lt;file&gt; [--minimal-main-dex]]
+</code></pre>
+
+<p>执行 dx 命令，可以看到其提供了 &ndash;multi-dex 的选项参数，需要接受的是一个文件的 &ndash;main-dex-list 以及一个最小化主 dex 的 &ndash;minimal-main-dex 参数。这里就是需要我们最终控制的地方，但要接触到这里，需要我们先看看 gradle plugin 是如何集成与使用它的？</p>
+
+<h2>生成</h2>
+
+<p>在使用 Android Studio 的时候，在 build.gradle 文件中，已经提供了 multidex 的支持。相应的选项是在 defaultConfig 中的 <code>multiDexEnabled</code> 设置为 true 即可。那其是如何生成多个 dex 的过程，就需要在 gradle plugin 的源码中来寻找答案了。</p>
+
+<p>通过 gradle 编译生成 apk 的期间，可以通过 <code>Gradle Console</code> 视图查看 gradle 执行任务的输出，期间跟 multidex 几个相关的任务如下：</p>
+
+<pre><code>:app:transformClassesWithJarMergingForDevDebug UP-TO-DATE
+:app:collectDevDebugMultiDexComponents
+:app:transformClassesWithMultidexlistForDevDebug UP-TO-DATE
+:app:transformClassesWithDexForDevDebug UP-TO-DATE
+</code></pre>
+
+<p>这几个任务对应在 gradle plugin 的源码中的位置为 TaskManager 的方法 <code>createPostCompilationTasks</code>。这里针对其中相关的 transform 和 task 做以简单的讲解：</p>
+
+<h3>1. JarMergingTransform</h3>
+
+<p>JarMergingTransform 的主要作用是将所用到的 jar 转换至一个单一的 Jar 中。具体输出的结果，可以在 build/intermediates/transforms/jarMerging 目录下，看到一个名称为 combined 的 jar 文件。</p>
+
+<h3>2. CreateManifestKeepList</h3>
+
+<p>CreateManifestKeepList 继承自 DefaultAndroidTask, 这一步会读取项目之前合并后的 manifest 文件，根据既定的规则，获取其中的 application、activity、service、provider、instrumentation 类，与 Mainifest 中的类组件进行比较来获取，最后会在 build/intermediates/multidex 下生成名为 manifest_keep.txt 的文件。</p>
+
+<p>另外，此任务设置 <code>Filter</code> 类，支持对特定的类进行过滤，让指定的类保存在 maindex 中。但是此方法已被标记为 Deprecated, 可能会在后续的版本中废弃掉。</p>
+
+<h3>3. MultiDexTransform</h3>
+
+<p>MultiDexTransform 的主要任务是根据之前的 mainfest_keep 及一些 proguard 文件来生成 mainDex 中指定的类集合文件，对应生成的输出结果为 <code>maindexlist.txt</code> 。</p>
+
+<p>但这里有个问题，就是 mainDex 的生成规则，其是如何指定哪些类在 mainDexList 中？</p>
+
+<p>查看源码可看到它把这部分工作交给类 <code>ClassReferenceListBuilder</code>。其又调用了类 <code>MainDexListBuilder</code>，后者对应着 build_tools 中的 mainClasses 工具中处理依赖关系所使用到的类。这里真正的依赖判端逻辑是在 <code>ClassReferenceListBuilder</code> 中，所需要指定的两个参数 <code>path</code> 和 <code>jarOfRoots</code>，前者表示的是所需要处理的所有类文件的路径(对应上文的 combined.jar)，后者指定的是所需要在 mainDex 中的类（即处理依赖时的 root，获取 root 所依赖的类, 对应上述步骤中生成的 manifest_keep.txt 中的类），</p>
+
+<p>其生成规则是遍历 <code>jarOfRoots</code> 中的 class 文件，将其对应程 <code>DirectClassFile</code> 对象（包含 class 信息的相应对象），之后从其中获取常量池中的类型，判断是类、方法、字段，并添加其类型所包含的类型信息。若是方法的时候，则需要的是方法的返回值类型以及参数值的类型。这里类型信息进行获取的时候，会从类、超类、实现的接口列表三个角度进行判断获取相应的类型信息。</p>
+
+<p>所以说，这里的依赖类的获取，是通过当前类的常量池来进行获取判断的，不得不说很机智。</p>
+
+<h3>4. DexTransform</h3>
+
+<p>它被 dexTask 所使用，相对应的调用程序为 build-tools 中的 dx 程序。在 DexTransform 中的参数 dexOptions、mainDexListFile 指定了 dx 命令执行过程中所需要的参数。其主要的任务用来生成 apk 中的 dex 文件，若是指定了 multidex 为 true 时，则会根据 mainDexList 文件(指定哪些类会在 mainDex)来划分生成最后的多个 dex 文件。</p>
+
+<p>这一步就是通过以上步骤的输出作为输入，进而执行 dx 命令的，来生成最终的 dex。了解到这里，接下来我们需要在以上的过程中动些手脚，来解决我们遇到的问题。</p>
+
+<h2>解决</h2>
+
+<h3>方法一：改变 keepList 任务列表</h3>
+
+<pre><code>afterEvaluate {
+  project.tasks.each { task -&gt;
+      if (task.name.startsWith('collect') &amp;&amp; task.name.endsWith('MultiDexComponents')) {
+          println "main-dex-filter: found task $task.name"
+          task.filter { name, attrs -&gt;
+              def componentName = attrs.get('android:name')
+              if ('activity'.equals(name)) {
+                  println "main-dex-filter: skipping, detected activity [$componentName]"
+                  return false
+              } else {
+                  println "main-dex-filter: keeping, detected $name [$componentName]"
+                  return true
+              }
+          }
+      }
+  }
+}
+</code></pre>
+
+<p>这一步对应 gradle 执行过程中的 <code>CreateManifestKeepList</code>，利用其提供的 filter，进行一些过滤操作，其中 <code>name</code> 参数表示为节点类型，例如 activity、service、receiver 等; <code>attrs</code> 参数表示相应的节点信息，它是一个 Map 类型的参数，可表示的值形如 <code>['android:name':'com.example.ActivityClass']</code> 。</p>
+
+<p>这一步可对 mainDex 中的组件信息做一些过滤，而不是添加所有的组件信息。像上述代码的处理就很残暴，把所有的 activity 都过滤掉。</p>
+
+<blockquote><p>PS: 需要注意的是，在源码中的 setFilter 已经被标为废弃，可能会在后续的版本被替换掉，所以用这种方案需要所使用的 gradle plugin 版本注意一二。</p></blockquote>
+
+<h3>方法二：修改 dx 的参数值</h3>
+
+<pre><code>afterEvaluate {
+  tasks.matching {
+      it.name.startsWith('dex')
+      println("task name:" + it.name)
+  }.each { dx -&gt;
+
+      if (dx.additionalParameters == null) {
+          dx.additionalParameters = []
+      }
+
+      //允许生成多个dex文件
+      dx.additionalParameters += '--multi-dex' // enable multidex
+
+      // 设置multidex.keep文件中class为第一个dex文件中包含的class，如果没有下一项设置此项无作用
+      dx.additionalParameters += "--main-dex-list=$projectDir/multidex.keep".toString()
+
+      //此项添加后第一个classes.dex文件只能包含-main-dex-list列表中class
+      dx.additionalParameters += '--minimal-main-dex'
+
+  }
+}
+</code></pre>
+
+<p>这一步直接对应 dx 最终的调用，即修改我们上文所提到的参数值，将其替换我们手动填充的值，但是这一步的 multidex.keep 文件就需要我们折腾一二了。</p>
+
+<p>不过针对这个方案，笔者是一直没有找到在 Task 中相对应的以 dex 开头的任务，所以这个方案没有生效。那为什么会有这种写法呢？笔者在 <code>Project</code> 中的 <code>Variant</code> 中相对应的 <code>ApkVariant</code> 类中看到一点信息，此接口定义了 <code>getDex()</code> 方法，对应实现在 <code>ApkVariantImpl</code> 中如下：</p>
+
+<pre><code class="java"> @Nullable
+ @Override
+ public Object getDex() {
+     throw new RuntimeException("Access to the dex task is now impossible, starting with 1.4.0\n"
+             + "1.4.0 introduces a new Transform API allowing manipulation of the .class files.\n"
+             + "See more information: http://tools.android.com/tech-docs/new-build-system/transform-api");
+ }
+</code></pre>
+
+<p>代码中返回的值就是这个方案中与 <code>dx</code> 相对应的值。不过从异常信息中可以看到的是在 gradle plugin 1.4.0 的版本开始，此方法就已被废弃，而改为采用 transform 的实现。</p>
+
+<p>所以此方案只针对 gradle plugin 1.4.0 之前的版本。</p>
+
+<h3>方案三：修改 MainDexList</h3>
+
+<p>这里所说的 MainDexList 对应着 bulld-tools 目录下的 dx 工具中 &ndash;main-dex-list 参数，与 Gradle  任务中相对应的是上文中提到的 <code>DexTransform</code> 的参数 <code>mainDexListFile</code>。意味着我们在调用 dx 命令（对应着执行 DexTransform）时，可对 KeepList 进行二次修改，保证 mainDex 中的类不超过限制，同时不出现 NoClassDefFoundError 的错误。</p>
+
+<h3>最终方案：DexKnifePlugin</h3>
+
+<p>推荐使用 <a href="https://github.com/ceabie/DexKnifePlugin">DexKnifePlugin</a>。来简单描述一下它的实现。其定义了一套类似 Proguard 的规则，用来定制生成 mainDex 所需 MainDexList 的规则，另外其考虑了 Gradle Plugin 针对 Dex 生成的两个不同版本的兼容。最后达到缩减、调整 MainDexList 来保证 mainDex 的生成无误。(是上述方案二和三的结合)</p>
+
+<h2>扩展</h2>
+
+<h3>NoClassDefFoundError 的出现</h3>
+
+<p>出现这个错误时，解决办法是将异常中的这个类加至 mainDex 中。但是这个错误跟 <code>NotClassFoundException</code> 的区别，可查阅 <a href="http://stackoverflow.com/a/5756989">链接</a>。</p>
+
+<p>其出现这个问题的说法，简单理解为虚拟机在第一次加载该类的出现了问题，当第二次再次使用这个类的时候，就会报出 NoClassDefFoundError。对应为我们 App 在运行时，在 mainDex 中有些类找不到，就会出现这样的错误。</p>
+
+<p>但是为什么出现 NoClassDefFoundError 呢？从上面的分析可知 mainDex 并不会把它依赖的所有类都包含进去，那么其类加载的规则是什么样的？这些内容是跟 Dalvik 虚拟机相关的，任务量不小，就暂且留作 2017 年的一项学习任务了。</p>
+
+<h2>总结</h2>
+
+<p>文章简单介绍了 Gradle Plugin 处理 MultiDex 的步骤，若是需要对 MainDex 做特殊处理时，便可根据 Manifest 文件生成的 keepList 或者 DexTransform 中的 MainDexList 做处理。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Multidex 的问题]]></title>
+    <link href="http://alighters.github.io/blog/blog/2016/11/01/multidex-problems/"/>
+    <updated>2016-11-01T18:10:00+08:00</updated>
+    <id>http://alighters.github.io/blog/blog/2016/11/01/multidex-problems</id>
+    <content type="html"><![CDATA[<h2>降低启动速度的问题</h2>
+
+<p>文章中提到的一点，在 Android 设备 4.4 及其之前的版本，当开启 Multidex 的时候，启动速度会延长 15% 。而 5.0及以上的设备因使用 ART 的方式，其默认支持多 dex 的加载。</p>
+
+<h2>NoClassDefFoundError 的问题</h2>
+
+<!-- more -->
+
+
+<ul>
+<li>查看加载的类问题
+在目录  [buildDir]/intermediates/multi-dex/[buildType]/maindexlist.txt 中可查看在主 dex 文件中的类，（但并不是 100% 准确，可能会丢失一些类）</li>
+<li>解决办法：配置一个新的 multidex.keep 文件，用来指定在 mainDex 中包含的类。通过配置 gradle 文件，指定 gradle 打包过程中，执行 dex 生成时的 keep 文件追加。具体实施是创建一个新的 task，使用 finalizedBy 来指定在 create**MainDexClassList 任务之后执行。另外还需要指定 dx 执行时，添加 &ndash;minimal-main-dex 选项，来使 maindex 最小化。</li>
+</ul>
+
+
+<h2>如何判断 App 启动过程中哪些类是需要加载的呢？</h2>
+
+<p>通过使用类加载 ClassLoader 中，其提供了方法 findLoadedClass。这个方法的作用是用来判断某个类是否被加载，所以文章中使用的技巧就是通过读在 second dex files 中的类，来判断主 dex 是否加载到。若是加载到，则我们就需要将这个类添加至 main dex 来提高 App 的启动速度。</p>
+
+<h2>解决与建议</h2>
+
+<p> 出现 65k 的问题时候，通过其他方式（重构、优化第三方 SDK的使用）来尽量避免使用 Multidex;若是不可避免地使用，需要对 Multidex 的方式进行优化来使用，来尽量提高我们 App 的启动速度。</p>
+
+<h3>延迟加载</h3>
+
+<p>对纯 java 文件，可以将其单独打成一个 dex，利用 Multidex 加载的原理，在当我们使用到相应 java 文件的时候，再加载这个 dex，来执行相应代码的调用。（方案有些不成熟，不支持涉及到资源文件的情况。）</p>
+
+<h2>其他</h2>
+
+<h3>1. 工具 ClassShark</h3>
+
+<p>在评论区，提到的一个软件 <a href="https://github.com/google/android-classyshark">android-classyshark</a>，可以帮我们更加容易分析 APK、dex、jar 中的使用内容，（不再通过 dex2jar, jd-gui等工具来查看）能够对 apk 中的内容一目了然, 功能非常强大。</p>
+
+<blockquote><p>在 Android Studio 2.2 之后的版本，其已经支持了对 apk 的分析，可以直接点击进行查看。</p></blockquote>
+
+<h3>2. dex2oat 与 dexopt</h3>
+
+<p>评论中关于 5.0及以上不受影响的讨论，主要原因是因为 5.0 采用了 ART 的编译方式，其是在 app 安装的时候执行的，期间对 dex 文件采用了 dex2oat 的执行过程，来对 dex 文件进行优化。而 5.0 之前的设备是没有这一步，其采用的 dexopt 的过程，并处理的是单个 dex 文件，这样也会影响了 multidex 的启动速度，但是这个是每次打开 app 都会进行的，并不是安装时执行的。</p>
+
+<blockquote><p>作者的关注点是在每次 App 打开的过程中， Multidex 带来的影响，所以这个讨论在这里并不是与主题太多相关，但是我们还是又必要了解一下的。</p></blockquote>
+
+<h2>参考资料</h2>
+
+<ul>
+<li><a href="https://medium.com/groupon-eng/android-s-multidex-slows-down-app-startup-d9f10b46770f#.nvl5amjzl">Android’s multidex slows down app startup</a></li>
+<li><a href="https://github.com/mmadev/multidex-sample">multidex-sample</a></li>
+<li><a href="https://medium.com/@Macarse/lazy-loading-dex-files-d41f6f37df0e#.9ftjpld1s">Lazy Loading Dex files</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+</feed>

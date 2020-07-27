@@ -1,0 +1,1014 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Java 字节码实践 - 解读 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="Java 字节码实践 - 解读 2016-09-16 7:58 am | Comments 最近刚看完 深入理解 Java 虚拟机 一书中的第 6 章 （类文件结构），便迫不及待地自己写一个小的 Demo，来自己分析一把 Java 源文件经过编译之后成为字节码文件到底是个什么东西？ &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2016/09/16/read-java-bytecode/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Java 字节码实践 - 解读</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-09-16T07:58:00+08:00'><span class='date'>2016-09-16</span> <span class='time'>7:58 am</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>最近刚看完 <a href="https://book.douban.com/subject/24722612/">深入理解 Java 虚拟机</a> 一书中的第 6 章 （类文件结构），便迫不及待地自己写一个小的 Demo，来自己分析一把 Java 源文件经过编译之后成为字节码文件到底是个什么东西？先由一个简单的小 Demo 开始：</p>
+
+<!--more-->
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">lighters</span><span class="o">.</span><span class="na">demo</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">Test</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">private</span> <span class="n">String</span> <span class="n">name</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="nf">Test</span><span class="o">(</span><span class="n">String</span> <span class="n">name</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">this</span><span class="o">.</span><span class="na">name</span> <span class="o">=</span> <span class="n">name</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">sayHello</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">printf</span><span class="o">(</span><span class="s">&quot;Hello &quot;</span> <span class="o">+</span> <span class="n">name</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>运行 <code>javac Test.java</code>，会在此目录下生成 <code>Test.class</code> 的文件。但是这个 class 字节码文件，是以二进制的形式存储的，我们需要以十六进制的形式进行查看。这里我使用 Vim 进行查看，在命令行模式输入：<code>%!xxd</code>，来采用十六进制的格式查看，得到下面的输出：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nl">location:</span> <span class="mi">0</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span>  <span class="mi">4</span> <span class="mi">5</span>  <span class="mi">6</span> <span class="mi">7</span>  <span class="mi">8</span> <span class="mi">9</span>  <span class="n">a</span> <span class="n">b</span>  <span class="n">c</span> <span class="n">d</span>  <span class="n">e</span> <span class="n">f</span>
+</span><span class='line'>
+</span><span class='line'><span class="mi">0000000</span><span class="o">:</span> <span class="n">cafe</span> <span class="n">babe</span> <span class="mi">0000</span> <span class="mi">0034</span> <span class="mi">002</span><span class="n">c</span> <span class="mi">0</span><span class="n">a00</span> <span class="mi">0900</span> <span class="mi">1609</span>  <span class="o">.......</span><span class="mi">4</span><span class="o">.,......</span>
+</span><span class='line'><span class="mi">0000010</span><span class="o">:</span> <span class="mi">000</span><span class="n">b</span> <span class="mi">0017</span> <span class="mi">0900</span> <span class="mi">1800</span> <span class="mi">1907</span> <span class="mi">001</span><span class="n">a</span> <span class="mi">0</span><span class="n">a00</span> <span class="mi">0400</span>  <span class="o">................</span>
+</span><span class='line'><span class="mi">0000020</span><span class="o">:</span> <span class="mi">1608</span> <span class="mi">001</span><span class="n">b</span> <span class="mi">0</span><span class="n">a00</span> <span class="mi">0400</span> <span class="mi">1</span><span class="n">c0a</span> <span class="mi">0004</span> <span class="mi">001</span><span class="n">d</span> <span class="mi">0700</span>  <span class="o">................</span>
+</span><span class='line'><span class="mi">0000030</span><span class="o">:</span> <span class="mi">1</span><span class="n">e0a</span> <span class="mi">001</span><span class="n">f</span> <span class="mi">0020</span> <span class="mi">0700</span> <span class="mi">2101</span> <span class="mi">0004</span> <span class="mi">6</span><span class="n">e61</span> <span class="mi">6</span><span class="n">d65</span>  <span class="o">.....</span> <span class="o">..!...</span><span class="na">name</span>
+</span><span class='line'><span class="mi">0000040</span><span class="o">:</span> <span class="mi">0100</span> <span class="mi">124</span><span class="n">c</span> <span class="mi">6</span><span class="n">a61</span> <span class="mi">7661</span> <span class="mi">2</span><span class="n">f6c</span> <span class="mi">616</span><span class="n">e</span> <span class="mi">672</span><span class="n">f</span> <span class="mi">5374</span>  <span class="o">...</span><span class="na">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">St</span>
+</span><span class='line'><span class="mi">0000050</span><span class="o">:</span> <span class="mi">7269</span> <span class="mi">6</span><span class="n">e67</span> <span class="mi">3</span><span class="n">b01</span> <span class="mi">0006</span> <span class="mi">3</span><span class="n">c69</span> <span class="mi">6</span><span class="n">e69</span> <span class="mi">743</span><span class="n">e</span> <span class="mi">0100</span>  <span class="n">ring</span><span class="o">;...&lt;</span><span class="n">init</span><span class="o">&gt;..</span>
+</span><span class='line'><span class="mi">0000060</span><span class="o">:</span> <span class="mi">1528</span> <span class="mi">4</span><span class="n">c6a</span> <span class="mi">6176</span> <span class="mi">612</span><span class="n">f</span> <span class="mi">6</span><span class="n">c61</span> <span class="mi">6</span><span class="n">e67</span> <span class="mi">2</span><span class="n">f53</span> <span class="mi">7472</span>  <span class="o">.(</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">Str</span>
+</span><span class='line'><span class="mi">0000070</span><span class="o">:</span> <span class="mi">696</span><span class="n">e</span> <span class="mi">673</span><span class="n">b</span> <span class="mi">2956</span> <span class="mi">0100</span> <span class="mi">0443</span> <span class="mi">6</span><span class="n">f64</span> <span class="mi">6501</span> <span class="mi">000</span><span class="n">f</span>  <span class="n">ing</span><span class="o">;)</span><span class="n">V</span><span class="o">...</span><span class="na">Code</span><span class="o">...</span>
+</span><span class='line'><span class="mi">0000080</span><span class="o">:</span> <span class="mi">4</span><span class="n">c69</span> <span class="mi">6</span><span class="n">e65</span> <span class="mi">4</span><span class="n">e75</span> <span class="mi">6</span><span class="n">d62</span> <span class="mi">6572</span> <span class="mi">5461</span> <span class="mi">626</span><span class="n">c</span> <span class="mi">6501</span>  <span class="n">LineNumberTable</span><span class="o">.</span>
+</span><span class='line'><span class="mi">0000090</span><span class="o">:</span> <span class="mi">0008</span> <span class="mi">7361</span> <span class="mi">7948</span> <span class="mi">656</span><span class="n">c</span> <span class="mi">6</span><span class="n">c6f</span> <span class="mi">0100</span> <span class="mi">0328</span> <span class="mi">2956</span>  <span class="o">..</span><span class="na">sayHello</span><span class="o">...()</span><span class="n">V</span>
+</span><span class='line'><span class="mi">00000</span><span class="nl">a0:</span> <span class="mi">0100</span> <span class="mi">0</span><span class="n">a53</span> <span class="mi">6</span><span class="n">f75</span> <span class="mi">7263</span> <span class="mi">6546</span> <span class="mi">696</span><span class="n">c</span> <span class="mi">6501</span> <span class="mi">0009</span>  <span class="o">...</span><span class="na">SourceFile</span><span class="o">...</span>
+</span><span class='line'><span class="mi">00000</span><span class="nl">b0:</span> <span class="mi">5465</span> <span class="mi">7374</span> <span class="mi">2</span><span class="n">e6a</span> <span class="mi">6176</span> <span class="mi">610</span><span class="n">c</span> <span class="mi">000</span><span class="n">e</span> <span class="mi">0013</span> <span class="mi">0</span><span class="n">c00</span>  <span class="n">Test</span><span class="o">.</span><span class="na">java</span><span class="o">.......</span>
+</span><span class='line'><span class="mi">00000</span><span class="nl">c0:</span> <span class="mi">0</span><span class="n">c00</span> <span class="mi">0</span><span class="n">d07</span> <span class="mi">0022</span> <span class="mi">0</span><span class="n">c00</span> <span class="mi">2300</span> <span class="mi">2401</span> <span class="mi">0017</span> <span class="mi">6</span><span class="n">a61</span>  <span class="o">.....</span><span class="s">&quot;..#.$...ja</span>
+</span><span class='line'><span class="s">00000d0: 7661 2f6c 616e 672f 5374 7269 6e67 4275  va/lang/StringBu</span>
+</span><span class='line'><span class="s">00000e0: 696c 6465 7201 0006 4865 6c6c 6f20 0c00  ilder...Hello ..</span>
+</span><span class='line'><span class="s">00000f0: 2500 260c 0027 0028 0100 106a 6176 612f  %.&amp;..&#39;.(...java/</span>
+</span><span class='line'><span class="s">0000100: 6c61 6e67 2f4f 626a 6563 7407 0029 0c00  lang/Object..)..</span>
+</span><span class='line'><span class="s">0000110: 2a00 2b01 0016 636f 6d2f 6c69 6768 7465  *.+...com/lighte</span>
+</span><span class='line'><span class="s">0000120: 7273 2f64 656d 6f2f 5465 7374 0100 106a  rs/demo/Test...j</span>
+</span><span class='line'><span class="s">0000130: 6176 612f 6c61 6e67 2f53 7973 7465 6d01  ava/lang/System.</span>
+</span><span class='line'><span class="s">0000140: 0003 6f75 7401 0015 4c6a 6176 612f 696f  ..out...Ljava/io</span>
+</span><span class='line'><span class="s">0000150: 2f50 7269 6e74 5374 7265 616d 3b01 0006  /PrintStream;...</span>
+</span><span class='line'><span class="s">0000160: 6170 7065 6e64 0100 2d28 4c6a 6176 612f  append..-(Ljava/</span>
+</span><span class='line'><span class="s">0000170: 6c61 6e67 2f53 7472 696e 673b 294c 6a61  lang/String;)Lja</span>
+</span><span class='line'><span class="s">0000180: 7661 2f6c 616e 672f 5374 7269 6e67 4275  va/lang/StringBu</span>
+</span><span class='line'><span class="s">0000190: 696c 6465 723b 0100 0874 6f53 7472 696e  ilder;...toStrin</span>
+</span><span class='line'><span class="s">00001a0: 6701 0014 2829 4c6a 6176 612f 6c61 6e67  g...()Ljava/lang</span>
+</span><span class='line'><span class="s">00001b0: 2f53 7472 696e 673b 0100 136a 6176 612f  /String;...java/</span>
+</span><span class='line'><span class="s">00001c0: 696f 2f50 7269 6e74 5374 7265 616d 0100  io/PrintStream..</span>
+</span><span class='line'><span class="s">00001d0: 0670 7269 6e74 6601 003c 284c 6a61 7661  .printf..&lt;(Ljava</span>
+</span><span class='line'><span class="s">00001e0: 2f6c 616e 672f 5374 7269 6e67 3b5b 4c6a  /lang/String;[Lj</span>
+</span><span class='line'><span class="s">00001f0: 6176 612f 6c61 6e67 2f4f 626a 6563 743b  ava/lang/Object;</span>
+</span><span class='line'><span class="s">0000200: 294c 6a61 7661 2f69 6f2f 5072 696e 7453  )Ljava/io/PrintS</span>
+</span><span class='line'><span class="s">0000210: 7472 6561 6d3b 0021 000b 0009 0000 0001  tream;.!........</span>
+</span><span class='line'><span class="s">0000220: 0002 000c 000d 0000 0002 0001 000e 000f  ................</span>
+</span><span class='line'><span class="s">0000230: 0001 0010 0000 002a 0002 0002 0000 000a  .......*........</span>
+</span><span class='line'><span class="s">0000240: 2ab7 0001 2a2b b500 02b1 0000 0001 0011  *...*+..........</span>
+</span><span class='line'><span class="s">0000250: 0000 000e 0003 0000 0007 0004 0008 0009  ................</span>
+</span><span class='line'><span class="s">0000260: 0009 0001 0012 0013 0001 0010 0000 003e  ...............&gt;</span>
+</span><span class='line'><span class="s">0000270: 0003 0001 0000 0022 b200 03bb 0004 59b7  .......&quot;</span><span class="o">......</span><span class="na">Y</span><span class="o">.</span>
+</span><span class='line'><span class="mi">0000280</span><span class="o">:</span> <span class="mi">0005</span> <span class="mi">1206</span> <span class="n">b600</span> <span class="mi">072</span><span class="n">a</span> <span class="n">b400</span> <span class="mi">02</span><span class="n">b6</span> <span class="mi">0007</span> <span class="n">b600</span>  <span class="o">.......*........</span>
+</span><span class='line'><span class="mi">0000290</span><span class="o">:</span> <span class="mi">0803</span> <span class="n">bd00</span> <span class="mi">09</span><span class="n">b6</span> <span class="mi">000</span><span class="n">a</span> <span class="mi">57</span><span class="n">b1</span> <span class="mi">0000</span> <span class="mi">0001</span> <span class="mi">0011</span>  <span class="o">........</span><span class="na">W</span><span class="o">.......</span>
+</span><span class='line'><span class="mi">00002</span><span class="nl">a0:</span> <span class="mi">0000</span> <span class="mi">000</span><span class="n">a</span> <span class="mi">0002</span> <span class="mi">0000</span> <span class="mi">000</span><span class="n">c</span> <span class="mi">0021</span> <span class="mi">000</span><span class="n">d</span> <span class="mi">0001</span>  <span class="o">...........!....</span>
+</span><span class='line'><span class="mi">00002</span><span class="nl">b0:</span> <span class="mi">0014</span> <span class="mi">0000</span> <span class="mi">0002</span> <span class="mi">0015</span>                      <span class="o">........</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>
+这里的输出还是蛮人性化的，每行开头前面的冒号前那一串是表示每行开头的第一个字符的位置索引。1 个字符是 4 位，即每两位是 1 个字节，一行则是 16 个 字节，对应十六进制表示为 0 - F。</p>
+
+<blockquote><p>PS: 第一行的内容为人为添加，方便定位列的索引。</p></blockquote>
+
+<p>可知，这里用十六进制表示，整个文件内容的大小没超过 3 位，所以这里用 3 位的十六进制，来表示地址。例如，若地址为0x000，指向的内容为 ca ；地址为 0x001，指向的内容为 fe；地址为0x011 ，指向的内容为 0b；下文都将以这样的形式来指向字节码中的内容。</p>
+
+<p>准备工作做好之后，我们还需要关于的 Java 字节码的结构信息表，如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">ClassFile</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">u4</span>             <span class="n">magic</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">minor_version</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">major_version</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">constant_pool_count</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">cp_info</span>        <span class="n">constant_pool</span><span class="o">[</span><span class="n">constant_pool_count</span><span class="o">-</span><span class="mi">1</span><span class="o">];</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">access_flags</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">this_class</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">super_class</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">interfaces_count</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">interfaces</span><span class="o">[</span><span class="n">interfaces_count</span><span class="o">];</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">fields_count</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">field_info</span>     <span class="n">fields</span><span class="o">[</span><span class="n">fields_count</span><span class="o">];</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">methods_count</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">method_info</span>    <span class="n">methods</span><span class="o">[</span><span class="n">methods_count</span><span class="o">];</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">attributes_count</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">attribute_info</span> <span class="n">attributes</span><span class="o">[</span><span class="n">attributes_count</span><span class="o">];</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里的 u1 、u2、 u4 表示的分别为 1 个字节，2个字节，4 个字节。接下来，我们将会跟字节码的结构信息表来一一对应在上面 Test.class 文件的解析：</p>
+
+<h2>魔数 - magic</h2>
+
+<p>在字节码结构表中，可知 magic 对应的是 4 个字节的容量，相应在 Test.class 文件位置为0x000 - 0x003 的 4 个字节，信息为 <code>cafe babe</code>。用来表示为这是一个 class 文件，能够被 JVM 所识别。</p>
+
+<h2>次版本 - minor_version</h2>
+
+<p>大小为两个字节，对应位置索引 0x004 - 0x005 的 2个字节，即 0x0000，表示此版本的大小为 0。</p>
+
+<h2>主版本 - major_version</h2>
+
+<p>大小为两个字节，对应位置索引为 0x006 - 0x007 的2个字节，即 0034，对应十进制的大小为 52，而初始的 Jvm 版本 1.0 支持的大小为 45，也就意味着这是由 JDK 1.8 生成的字节码，则之能由 Jvm 1.8 及以上版本才能解析上文的字节码文件。</p>
+
+<h2>常量池容量 - constant_pool_count</h2>
+
+<p>由 2 个字节来表示常量池的大小，这个大小包含自身，即其余的常量大小只能为  2<sup>16</sup> - 1，对应 Test.class 文件中的描述为 002c ，对应十进制大小为 44，表明还将有 43 个字节用来描述常量池。</p>
+
+<p>常量池中主要存放两大类常量：字面量和符号引用。字面量主要指文本字符串，声明为 final 的常量值等。而符号引用属于编译原理方面的概念，主要包含类和接口的全限定名，字段的名称和描述符，方法的名称和描述符。</p>
+
+<h2>常量池 - constant_pool[constant_pool_count-1]</h2>
+
+<p>这里将会有 43 个常量。常量池包含着一组信息，不过他们的通用格式如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">cp_info</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">u1</span> <span class="n">tag</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u1</span> <span class="n">info</span><span class="o">[];</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>即 1 个自己的 tag描述，加上一组相应信息的描述。看到这里，我们继续接下来的字节，内容为 0x0a，对应十进制的 10，在下面的常量 tag 表中，进行查找，可知对应的常量类型为 Constant_Methodref，表示当前类方法的符号引用。</p>
+
+<p><img src="http://upload-images.jianshu.io/upload_images/656559-223a2c97df971838.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="常量池 tag" /></p>
+
+<p>接着查找 Constant_Methodref 的结构，如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">CONSTANT_Methodref_info</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">u1</span> <span class="n">tag</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span> <span class="n">class_index</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span> <span class="n">name_and_type_index</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>可知 第一个字节是为 tag 标记，这里已经确定了是刚才的 <code>Constant_Methodref</code>；然后是两个字节的 class_index ，指向的内容是指类在常量池中的索引；最后是两个字节的 name_and_type_index，同样也是方法的描述在常量池中的索引值。</p>
+
+<p>先看 class_index，可知其内容是地址0x00b - 0x00c ，相应内容为 0x0009，即这里我们需要从 0x00b 的位置开始数，数至第 9 个常量。常量寻找定位的过程如下：</p>
+
+<ul>
+<li>常量1：<code>CONSTANT_Methodref</code>，一共占 5 个字节，位置为 0x00a - 0x00e</li>
+<li>常量2: <code>CONSTANT_Fieldref</code>，格式与常量1 <code>methodref</code>相同，5个字节，位置为 0x00f - 0x013</li>
+<li>常量3：<code>CONSTANT_Fieldref</code>，同上，位置为 0x014 - 0x018</li>
+<li>常量4：<code>CONSTANT_Class</code>，其格式为下述代码，3个字节，位置为 0x019 - 0x01b</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">CONSTANT_Class_info</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">u1</span> <span class="n">tag</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span> <span class="n">name_index</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>常量5：<code>CONSTANT_Methodref</code>, 5个字节，位置为 0x01c - 0x020</li>
+<li>常量6；<code>CONSTANT_String</code>，其格式如下代码，3个字节，位置为 0x021 - 0x023，这里的 string_index，也指向的是常量池中的内容，不过它将会指向的
+是一个 <code>CONSTANT_Utf8</code> 的常量。</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">CONSTANT_String_info</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">u1</span> <span class="n">tag</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span> <span class="n">string_index</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>常量7：<code>CONSTANT_Methodref</code>, 5个字节，位置为 0x024 - 0x028</li>
+<li>常量8：<code>CONSTANT_Methodref</code>, 5个字节，位置为 0x029 - 0x02d</li>
+<li>常量9：<code>CONSTANT_Class</code>，3个字节，位置为 0x02e - 0x030。</li>
+</ul>
+
+
+<p>到这里，可以看出第一个常量 <code>CONSTANT_Methodref</code> 中的 <code>class_index</code> 指向的是一个 <code>CONSTANT_Class</code>，另一个 <code>name_and_type_index</code> 将会指向一个 <code>CONSTANT_NameAndType</code> 的常量。发现这样阅读定位，实在是太费力了，好在 jdk 给我们提供了 <code>javap</code> 的命令工具。 用它来输出字节码的信息，来帮助我们阅读。在命令行下输入 <code>javap -verbose Test.class</code>，过滤其他输出，只关心我们的常量池输出，如下 ：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Constant</span> <span class="nl">pool:</span>
+</span><span class='line'>   <span class="err">#</span><span class="mi">1</span> <span class="o">=</span> <span class="n">Methodref</span>          <span class="err">#</span><span class="mi">9</span><span class="o">.</span><span class="err">#</span><span class="mi">22</span>         <span class="c1">// java/lang/Object.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>   <span class="err">#</span><span class="mi">2</span> <span class="o">=</span> <span class="n">Fieldref</span>           <span class="err">#</span><span class="mi">11</span><span class="o">.</span><span class="err">#</span><span class="mi">23</span>        <span class="c1">// com/lighters/demo/Test.name:Ljava/lang/String;</span>
+</span><span class='line'>   <span class="err">#</span><span class="mi">3</span> <span class="o">=</span> <span class="n">Fieldref</span>           <span class="err">#</span><span class="mi">24</span><span class="o">.</span><span class="err">#</span><span class="mi">25</span>        <span class="c1">// java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>   <span class="err">#</span><span class="mi">4</span> <span class="o">=</span> <span class="n">Class</span>              <span class="err">#</span><span class="mi">26</span>            <span class="c1">// java/lang/StringBuilder</span>
+</span><span class='line'>   <span class="err">#</span><span class="mi">5</span> <span class="o">=</span> <span class="n">Methodref</span>          <span class="err">#</span><span class="mi">4</span><span class="o">.</span><span class="err">#</span><span class="mi">22</span>         <span class="c1">// java/lang/StringBuilder.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>   <span class="err">#</span><span class="mi">6</span> <span class="o">=</span> <span class="n">String</span>             <span class="err">#</span><span class="mi">27</span>            <span class="c1">// Hello</span>
+</span><span class='line'>   <span class="err">#</span><span class="mi">7</span> <span class="o">=</span> <span class="n">Methodref</span>          <span class="err">#</span><span class="mi">4</span><span class="o">.</span><span class="err">#</span><span class="mi">28</span>         <span class="c1">// java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>   <span class="err">#</span><span class="mi">8</span> <span class="o">=</span> <span class="n">Methodref</span>          <span class="err">#</span><span class="mi">4</span><span class="o">.</span><span class="err">#</span><span class="mi">29</span>         <span class="c1">// java/lang/StringBuilder.toString:()Ljava/lang/String;</span>
+</span><span class='line'>   <span class="err">#</span><span class="mi">9</span> <span class="o">=</span> <span class="n">Class</span>              <span class="err">#</span><span class="mi">30</span>            <span class="c1">// java/lang/Object</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">10</span> <span class="o">=</span> <span class="n">Methodref</span>          <span class="err">#</span><span class="mi">31</span><span class="o">.</span><span class="err">#</span><span class="mi">32</span>        <span class="c1">// java/io/PrintStream.printf:(Ljava/lang/String;[Ljava/lang/Object;)Ljava/io/PrintStream;</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">11</span> <span class="o">=</span> <span class="n">Class</span>              <span class="err">#</span><span class="mi">33</span>            <span class="c1">// com/lighters/demo/Test</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">12</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">name</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">13</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">14</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="o">&lt;</span><span class="n">init</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">15</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="o">(</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;)</span><span class="n">V</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">16</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">Code</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">17</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">LineNumberTable</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">18</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">sayHello</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">19</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="o">()</span><span class="n">V</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">20</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">SourceFile</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">21</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">Test</span><span class="o">.</span><span class="na">java</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">22</span> <span class="o">=</span> <span class="n">NameAndType</span>        <span class="err">#</span><span class="mi">14</span><span class="o">:</span><span class="err">#</span><span class="mi">19</span>        <span class="c1">// &quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">23</span> <span class="o">=</span> <span class="n">NameAndType</span>        <span class="err">#</span><span class="mi">12</span><span class="o">:</span><span class="err">#</span><span class="mi">13</span>        <span class="c1">// name:Ljava/lang/String;</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">24</span> <span class="o">=</span> <span class="n">Class</span>              <span class="err">#</span><span class="mi">34</span>            <span class="c1">// java/lang/System</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">25</span> <span class="o">=</span> <span class="n">NameAndType</span>        <span class="err">#</span><span class="mi">35</span><span class="o">:</span><span class="err">#</span><span class="mi">36</span>        <span class="c1">// out:Ljava/io/PrintStream;</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">26</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">java</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">StringBuilder</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">27</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">Hello</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">28</span> <span class="o">=</span> <span class="n">NameAndType</span>        <span class="err">#</span><span class="mi">37</span><span class="o">:</span><span class="err">#</span><span class="mi">38</span>        <span class="c1">// append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">29</span> <span class="o">=</span> <span class="n">NameAndType</span>        <span class="err">#</span><span class="mi">39</span><span class="o">:</span><span class="err">#</span><span class="mi">40</span>        <span class="c1">// toString:()Ljava/lang/String;</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">30</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">java</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">Object</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">31</span> <span class="o">=</span> <span class="n">Class</span>              <span class="err">#</span><span class="mi">41</span>            <span class="c1">// java/io/PrintStream</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">32</span> <span class="o">=</span> <span class="n">NameAndType</span>        <span class="err">#</span><span class="mi">42</span><span class="o">:</span><span class="err">#</span><span class="mi">43</span>        <span class="c1">// printf:(Ljava/lang/String;[Ljava/lang/Object;)Ljava/io/PrintStream;</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">33</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">com</span><span class="o">/</span><span class="n">lighters</span><span class="o">/</span><span class="n">demo</span><span class="o">/</span><span class="n">Test</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">34</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">java</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">System</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">35</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">out</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">36</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">Ljava</span><span class="o">/</span><span class="n">io</span><span class="o">/</span><span class="n">PrintStream</span><span class="o">;</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">37</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">append</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">38</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="o">(</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;)</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">StringBuilder</span><span class="o">;</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">39</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">toString</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">40</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="o">()</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">41</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">java</span><span class="o">/</span><span class="n">io</span><span class="o">/</span><span class="n">PrintStream</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">42</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="n">printf</span>
+</span><span class='line'>  <span class="err">#</span><span class="mi">43</span> <span class="o">=</span> <span class="n">Utf8</span>               <span class="o">(</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;[</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">Object</span><span class="o">;)</span><span class="n">Ljava</span><span class="o">/</span><span class="n">io</span><span class="o">/</span><span class="n">PrintStream</span><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>结合这个输出，再回过头来，查看之前的第一个常量，其类型为 <code>Methodref</code>，另包含指向 #9 和 #22 的索引；#9 类型为 <code>Class</code>，其包含一个 #30 的 utf8 的字符串描述 ：<code>java/lang/Object</code>；# 22 指向的是 <code>NameAndType</code> 的索引，其指向的内容的 #14 的方法描述，及 #19 的方法参数及其返回值的描述。可知这个 <code>Methodref</code> 的最终指向的内容为 <code>Object</code> 的 <code>init</code> 方法，<code>()V</code> 表达的意思是参数为空，返回值为 Void。</p>
+
+<p>另外还有其他的方法，字段，类以及 utf8 的描述，而 uft8 描述的则是一组 ascii 码字符。</p>
+
+<h2>访问标记 - access_flags</h2>
+
+<p>在经过了 43 个大小的常量池，接下来便是两个字节的访问标记，其主要用来表示当前类的访问符。这里具体的取值如下表：</p>
+
+<p><img src="http://upload-images.jianshu.io/upload_images/656559-46948b414f858066.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="access_flags" />
+从表中得到这里的取值都是数字 1 进行移位得到的结果，这样就可以通过或运算得到我们类有哪些访问标记。</p>
+
+<p>访问标记对应在字节码中的位置为 0x216 - 0x217，内容为 0x0021，可知这结果是由访问标记中的 ACC_PUBLIC | ACC_SUPER 所得。ACC_SUPER 在 JDK 1.2 添加，默认类都会带上这个访问标记。</p>
+
+<h2>当前类 - this_class</h2>
+
+<p>两个字节的当前类标识，其地址为 0x218 - 0x219，内容为 0x000b。其内容表示的是在常量池中第 11 个，指向的内容为 class。通过查看之前的常量池表，可知其 class 的内容为 com/lighters/demo/Test。</p>
+
+<h2>父类 - super_class</h2>
+
+<p>其格式同上，可知其对应字节码的内容为 0x0009，在常量池表中针对的 class 内容为 java/lang/Object 。</p>
+
+<h2>接口数量 - interfaces_count</h2>
+
+<p>两个字节的表示，其地址为 0x21c - 0x21d，内容为 0x0000。表示当前类没有实现任何接口。</p>
+
+<h2>接口 - interfaces[interfaces_count]</h2>
+
+<p>这里描述的是 interfaces_count 的两个自己的接口描述。因为 interfaces_count 为零，所以这里不会有任何地址的指向。</p>
+
+<h2>字段数量 - fields_count</h2>
+
+<p>两字节的字段数量，字节码中对应地址为 0x21e - 0x21f，内容为 0x001。表示有个 1 字段。</p>
+
+<h2>字段 - fields[fields_count]</h2>
+
+<p>同样是有 fields_count 的 field_info，这里 fields_count 为 1， 我们只用分析一个即可，而 field_info 的格式如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">field_info</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">access_flags</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">name_index</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">descriptor_index</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">attributes_count</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">attribute_info</span> <span class="n">attributes</span><span class="o">[</span><span class="n">attributes_count</span><span class="o">];</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>第一项为两个字节的 access_flags ，字节码中对应的地址为 0x220 - 0x221，内容为 0x0002，而 acess_flags 对应的表结构定义如下；</p>
+
+<p><img src="http://upload-images.jianshu.io/upload_images/656559-998d30425ca542be.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="Field access and property flags" /></p>
+
+<p>所以，可知我们的字段为 private。接下来是两字节的 name_index，内容为 0x000c，对应常量表中的索引为 12，内容为 name。两字节的 descriptor_index，内容为 0x000d，对应常量表中的索引为13，内容为 Ljava/lang/String。</p>
+
+<p>接下来则是 attributes_count，这里对应结果为 0，就不看了。</p>
+
+<p>最终，我们可知道 Test 类中，有一个 private ，名称为 name，类型为 String的字段。而 attributes_count 为空，表示这里没有直接对其进行赋值。</p>
+
+<h2>方法数量 - methods_count</h2>
+
+<p>两个字节描述方法数量，字节码中地址为 0x228 - 0x229，其内容为 0x0002，表示两个方法。</p>
+
+<h2>方法 - methods[methods_count]</h2>
+
+<p>这里的方法则对应着 method_info 的的结构，如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">method_info</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">access_flags</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">name_index</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">descriptor_index</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span>             <span class="n">attributes_count</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">attribute_info</span> <span class="n">attributes</span><span class="o">[</span><span class="n">attributes_count</span><span class="o">];</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里的 method_info 跟 field_info 的结构相同。先看 <code>access_flags</code>，在字节码中其位置为 0x22a - 0x22b，相应内容为 0x0001。根据如下 method 的 access_flag 表，可知其相对应的为 public。</p>
+
+<p><img src="http://upload-images.jianshu.io/upload_images/656559-881d90912e7d978c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="Method access and property flags" /></p>
+
+<p>接下来的 4 个字节是 0x000e 和 0x000f，分别指向常量池中 14 和 15，对应着 方法名称 <init> 和方法描述 (Ljava/lang/String;)V。</p>
+
+<p>接下来的两个字节为 0x0001, 表示 attributes_count 为1。这就要分析一下 attribute_info 是什么内容？先看它的结构：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">attribute_info</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">u2</span> <span class="n">attribute_name_index</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u4</span> <span class="n">attribute_length</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u1</span> <span class="n">info</span><span class="o">[</span><span class="n">attribute_length</span><span class="o">];</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>两字节的 attribute_name_index 对应字节码表的位置为 0x232 - 0x233，表示的内容为 0x0010，其对应的是常量池的 utf8 的信息，索引内容为 16，表示相应的内容为 Code。其结构如下 ：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Code_attribute</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">u2</span> <span class="n">attribute_name_index</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u4</span> <span class="n">attribute_length</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span> <span class="n">max_stack</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span> <span class="n">max_locals</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u4</span> <span class="n">code_length</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u1</span> <span class="n">code</span><span class="o">[</span><span class="n">code_length</span><span class="o">];</span>
+</span><span class='line'>    <span class="n">u2</span> <span class="n">exception_table_length</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">{</span>   <span class="n">u2</span> <span class="n">start_pc</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">u2</span> <span class="n">end_pc</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">u2</span> <span class="n">handler_pc</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">u2</span> <span class="n">catch_type</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span> <span class="n">exception_table</span><span class="o">[</span><span class="n">exception_table_length</span><span class="o">];</span>
+</span><span class='line'>    <span class="n">u2</span> <span class="n">attributes_count</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">attribute_info</span> <span class="n">attributes</span><span class="o">[</span><span class="n">attributes_count</span><span class="o">];</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Code 主要用来描述方法的内部实现，其中会用指令来描述方法的运行状态，另外以及异常的信息等。但是 abstarct 与 native 的 method_info 并不会有 code_info。</p>
+
+<p>这里的 method_info 信息我们通过之前的 javap 对 Test.class 文件输出的信息来进行查看，可以更加清晰明了。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">{</span>
+</span><span class='line'>  <span class="kd">public</span> <span class="n">com</span><span class="o">.</span><span class="na">lighters</span><span class="o">.</span><span class="na">demo</span><span class="o">.</span><span class="na">Test</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">String</span><span class="o">);</span>
+</span><span class='line'>    <span class="nl">descriptor:</span> <span class="o">(</span><span class="n">Ljava</span><span class="o">/</span><span class="n">lang</span><span class="o">/</span><span class="n">String</span><span class="o">;)</span><span class="n">V</span>
+</span><span class='line'>    <span class="nl">flags:</span> <span class="n">ACC_PUBLIC</span>
+</span><span class='line'>    <span class="nl">Code:</span>
+</span><span class='line'>      <span class="n">stack</span><span class="o">=</span><span class="mi">2</span><span class="o">,</span> <span class="n">locals</span><span class="o">=</span><span class="mi">2</span><span class="o">,</span> <span class="n">args_size</span><span class="o">=</span><span class="mi">2</span>
+</span><span class='line'>         <span class="mi">0</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class='line'>         <span class="mi">1</span><span class="o">:</span> <span class="n">invokespecial</span> <span class="err">#</span><span class="mi">1</span>                  <span class="c1">// Method java/lang/Object.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>         <span class="mi">4</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class='line'>         <span class="mi">5</span><span class="o">:</span> <span class="n">aload_1</span>
+</span><span class='line'>         <span class="mi">6</span><span class="o">:</span> <span class="n">putfield</span>      <span class="err">#</span><span class="mi">2</span>                  <span class="c1">// Field name:Ljava/lang/String;</span>
+</span><span class='line'>         <span class="mi">9</span><span class="o">:</span> <span class="k">return</span>
+</span><span class='line'>      <span class="nl">LineNumberTable:</span>
+</span><span class='line'>        <span class="n">line</span> <span class="mi">7</span><span class="o">:</span> <span class="mi">0</span>
+</span><span class='line'>        <span class="n">line</span> <span class="mi">8</span><span class="o">:</span> <span class="mi">4</span>
+</span><span class='line'>        <span class="n">line</span> <span class="mi">9</span><span class="o">:</span> <span class="mi">9</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">sayHello</span><span class="o">();</span>
+</span><span class='line'>    <span class="nl">descriptor:</span> <span class="o">()</span><span class="n">V</span>
+</span><span class='line'>    <span class="nl">flags:</span> <span class="n">ACC_PUBLIC</span>
+</span><span class='line'>    <span class="nl">Code:</span>
+</span><span class='line'>      <span class="n">stack</span><span class="o">=</span><span class="mi">3</span><span class="o">,</span> <span class="n">locals</span><span class="o">=</span><span class="mi">1</span><span class="o">,</span> <span class="n">args_size</span><span class="o">=</span><span class="mi">1</span>
+</span><span class='line'>         <span class="mi">0</span><span class="o">:</span> <span class="n">getstatic</span>     <span class="err">#</span><span class="mi">3</span>                  <span class="c1">// Field java/lang/System.out:Ljava/io/PrintStream;</span>
+</span><span class='line'>         <span class="mi">3</span><span class="o">:</span> <span class="k">new</span>           <span class="err">#</span><span class="mi">4</span>                  <span class="c1">// class java/lang/StringBuilder</span>
+</span><span class='line'>         <span class="mi">6</span><span class="o">:</span> <span class="n">dup</span>
+</span><span class='line'>         <span class="mi">7</span><span class="o">:</span> <span class="n">invokespecial</span> <span class="err">#</span><span class="mi">5</span>                  <span class="c1">// Method java/lang/StringBuilder.&quot;&lt;init&gt;&quot;:()V</span>
+</span><span class='line'>        <span class="mi">10</span><span class="o">:</span> <span class="n">ldc</span>           <span class="err">#</span><span class="mi">6</span>                  <span class="c1">// String Hello</span>
+</span><span class='line'>        <span class="mi">12</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>        <span class="mi">15</span><span class="o">:</span> <span class="n">aload_0</span>
+</span><span class='line'>        <span class="mi">16</span><span class="o">:</span> <span class="n">getfield</span>      <span class="err">#</span><span class="mi">2</span>                  <span class="c1">// Field name:Ljava/lang/String;</span>
+</span><span class='line'>        <span class="mi">19</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">7</span>                  <span class="c1">// Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;</span>
+</span><span class='line'>        <span class="mi">22</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">8</span>                  <span class="c1">// Method java/lang/StringBuilder.toString:()Ljava/lang/String;</span>
+</span><span class='line'>        <span class="mi">25</span><span class="o">:</span> <span class="n">iconst_0</span>
+</span><span class='line'>        <span class="mi">26</span><span class="o">:</span> <span class="n">anewarray</span>     <span class="err">#</span><span class="mi">9</span>                  <span class="c1">// class java/lang/Object</span>
+</span><span class='line'>        <span class="mi">29</span><span class="o">:</span> <span class="n">invokevirtual</span> <span class="err">#</span><span class="mi">10</span>                 <span class="c1">// Method java/io/PrintStream.printf:(Ljava/lang/String;[Ljava/lang/Object;)Ljava/io/PrintStream;</span>
+</span><span class='line'>        <span class="mi">32</span><span class="o">:</span> <span class="n">pop</span>
+</span><span class='line'>        <span class="mi">33</span><span class="o">:</span> <span class="k">return</span>
+</span><span class='line'>      <span class="nl">LineNumberTable:</span>
+</span><span class='line'>        <span class="n">line</span> <span class="mi">12</span><span class="o">:</span> <span class="mi">0</span>
+</span><span class='line'>        <span class="n">line</span> <span class="mi">13</span><span class="o">:</span> <span class="mi">33</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>输出信息中的 Code 可以看出方法的操作栈最大深度为 2，内部变量为 2，之后便是以 1 个字节为单位的指令描述，这里就不对指定讲解了，可参照气候的注释进行理解。</p>
+
+<p>在最后的 attributes 中，存放的是 LineNumberTable。它是做什么用的？当我们需要进行断点调试的时候，它便可以用来对应我们在源文件的方法代码位置，这样更方便我们定位代码错误位置。其格式如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">LineNumberTable_attribute</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">u2</span> <span class="n">attribute_name_index</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u4</span> <span class="n">attribute_length</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span> <span class="n">line_number_table_length</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">{</span>   <span class="n">u2</span> <span class="n">start_pc</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">u2</span> <span class="n">line_number</span><span class="o">;</span>  
+</span><span class='line'>    <span class="o">}</span> <span class="n">line_number_table</span><span class="o">[</span><span class="n">line_number_table_length</span><span class="o">];</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中的 attribute_name_index，便是对应常量池索引为 17 的 LineNumberTable。主要研究 line_number_table 的数据结构：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">{</span>
+</span><span class='line'>   <span class="n">u2</span> <span class="n">start_pc</span><span class="o">;</span>
+</span><span class='line'>   <span class="n">u2</span> <span class="n">line_number</span><span class="o">;</span>   
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里的 start_pc 表示针对在 Code 块的起始位置，而 line_number 则表示相对应的在源码中的行数。所以上面第一个方法，（类构造器 init ）输出 LineNumberTable ：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nl">LineNumberTable:</span>
+</span><span class='line'>  <span class="n">line</span> <span class="mi">7</span><span class="o">:</span> <span class="mi">0</span>
+</span><span class='line'>  <span class="n">line</span> <span class="mi">8</span><span class="o">:</span> <span class="mi">4</span>
+</span><span class='line'>  <span class="n">line</span> <span class="mi">9</span><span class="o">:</span> <span class="mi">9</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>就相当好理解了，方法所在源码中的第 7 行对应在 Code info 块中的索引为 0；第 8 行对应 Code 中索引为 4；第 9 行对应 Code 中的索引为 9。</p>
+
+<p>方法 <code>sayHello</code> 的格式同理，就不赘述了。有个小细节需要注意的是，在其 Code 中的索引 19 调用 invokevirtual 指令时，对应源文件中调用 <code>+</code> 操作符，可以在注释中，看到其相对应调用的是 <code>StringBuilder</code>对象的 <code>append</code> 方法。</p>
+
+<p>说明了什么呢？当我们在调用 <code>+</code> 操作符时，编译器在进行编译的时候，会创建一个 <code>StringBuilder</code>对象，通过 <code>append</code> 方法进行相加操作。这样我们在多次使用 <code>+</code> 操作时，IDE 会给我们一个警告的提示，也就不足为怪了。</p>
+
+<h2>附属属性数量 - attributes_count</h2>
+
+<p>这里对应位置为 0x2ae- 0x2af，信息为 0x0001，表示为只存在 1 个 attribute。</p>
+
+<h2>附属属性 - attributes[attributes_count]</h2>
+
+<p>在 0x2b0 - 0x2b1 的信息为 0x0014，对应常量池的索引 20 的值，为 SourceFile。其结构如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">SourceFile_attribute</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">u2</span> <span class="n">attribute_name_index</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u4</span> <span class="n">attribute_length</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">u2</span> <span class="n">sourcefile_index</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>可知接下来的 4 字节表示长度，为 2 ; 接下来的 2 字节表示源文件索引，值为 0x0015，对应常量池中的索引为 21 的值，为 Test.java。</p>
+
+<h2>总结</h2>
+
+<p>在根据主线 ClassFile 的结构表一一分析之后，字节码 <code>class</code> 文件终于被我们完整的看完了。当然其中一些细节如其他的 attribute 结构、Code 中相应的指令操作等，并没有去深入讲解，但是这并不妨碍我们对字节码（只闻其名，不知其人）产生一个更加深入而又完整的认识。我们只需编写出符合 JVM 规范的字节码文件，即可运行与 JVM 之上，像其他的语言如 JRuby、Scala、Kotlin等就是，不过它们使用的是特定的编译器。另外，需要提及的两个命令 javac 及 javap ，需要熟练使用。当然其中的指令操作还是需要去深入研究一番，这篇也有许多不足之处，也欢迎小伙伴一起深入探讨。</p>
+
+<h2>参考资料</h2>
+
+<ul>
+<li><a href="https://book.douban.com/subject/24722612/">深入理解 Java 虚拟机 周志明著 第二版</a></li>
+<li><a href="https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html">JVM Doc</a></li>
+</ul>
+
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2016/09/16/read-java-bytecode/">/blog/2016/09/16/read-java-bytecode/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2016-09-16T07:58:00+08:00'><span class='date'>2016-09-16</span> <span class='time'>7:58 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2016/09/16/read-java-bytecode/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2016/09/16/read-java-bytecode/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/09/08/unit-test-robolectric/" title="Previous Post: Android单元测试-Robolectric 浅析">&laquo; Android单元测试-Robolectric 浅析</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/09/26/ruby-code-refactor/" title="Next Post: Ruby 代码重构">Ruby 代码重构 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2016/09/16/read-java-bytecode/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2016/09/16/read-java-bytecode/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

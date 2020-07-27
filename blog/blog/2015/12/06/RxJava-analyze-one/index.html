@@ -1,0 +1,518 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>RxJava原理解析一 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="RxJava原理解析一 2015-12-06 11:53 pm | Comments 初学RxJava，对其许多的API颇感神奇，所以RxJava的原理充满了兴趣。正好最近教父大头鬼也出了一篇RxJava解析的文章，本人也结合源码给出自己的理解。 这里主要先就一点来讲解。问题如下： &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2015/12/06/RxJava-analyze-one/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">RxJava原理解析一</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-12-06T23:53:00+00:00'><span class='date'>2015-12-06</span> <span class='time'>11:53 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>初学RxJava，对其许多的API颇感神奇，所以RxJava的原理充满了兴趣。正好最近教父大头鬼也出了一篇<a href="http://blog.csdn.net/lzyzsd/article/details/50110355">RxJava解析的文章</a>，本人也结合源码给出自己的理解。</p>
+
+<p>这里主要先就一点来讲解。问题如下：</p>
+
+<!-- more -->
+
+
+<h3>订阅跟被订阅的关系？是如何实现这一机制的？</h3>
+
+<ul>
+<li>首先，理解OnSubscribe的概念</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="cm">/**</span>
+</span><span class='line'><span class="cm">  * Invoked when Observable.subscribe is called.</span>
+</span><span class='line'><span class="cm">  */</span>
+</span><span class='line'> <span class="kd">public</span> <span class="kd">interface</span> <span class="nc">OnSubscribe</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="n">Action1</span><span class="o">&lt;</span><span class="n">Subscriber</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;&gt;</span> <span class="o">{</span>
+</span><span class='line'>     <span class="c1">// cover for generics insanity</span>
+</span><span class='line'> <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>OnSubscribe继承自Action1，来看看Action1是干什么的</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * A one-argument action.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">Action1</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="n">Action</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="nf">call</span><span class="o">(</span><span class="n">T</span> <span class="n">t</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Action1仅仅是一个参数的泛型接口，提供了使用泛型的类型来作为参数，这样就可以调用这个指定的泛型类型。
+在此，我把这个onSubscribe理解为订阅的行为。这个行为是指，我在创建一个被观察者的时候，就是要指定这个被观察者所要发布的行为；在观察者的角度来理解，就表示观察者订阅了这些行为。
++ 理解了这个OnSubscribe之后，看看Observable的创建。这里主要看Observable的构造方法：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="cm">/**</span>
+</span><span class='line'><span class="cm">  * Creates an Observable with a Function to execute when it is subscribed to.</span>
+</span><span class='line'><span class="cm">  * &lt;p&gt;</span>
+</span><span class='line'><span class="cm">  * &lt;em&gt;Note:&lt;/em&gt; Use {@link #create(OnSubscribe)} to create an Observable, instead of this constructor,</span>
+</span><span class='line'><span class="cm">  * unless you specifically have a need for inheritance.</span>
+</span><span class='line'><span class="cm">  * </span>
+</span><span class='line'><span class="cm">  * @param f</span>
+</span><span class='line'><span class="cm">  *            {@link OnSubscribe} to be executed when {@link #subscribe(Subscriber)} is called</span>
+</span><span class='line'><span class="cm">  */</span>
+</span><span class='line'> <span class="kd">protected</span> <span class="nf">Observable</span><span class="o">(</span><span class="n">OnSubscribe</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">f</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>     <span class="k">this</span><span class="o">.</span><span class="na">onSubscribe</span> <span class="o">=</span> <span class="n">f</span><span class="o">;</span>
+</span><span class='line'> <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>额，很简单的嘛。这里主要就是需要把OnSubscribe的属性保存下来，（即咱们所订阅的行为）。这里咱们着重点放在这段代码的类注释上面：<strong>创建一个带有执行操作的被观察者，当它被订阅时，执行它的操作（即咱们提到的订阅行为）</strong>，<em>翻译的不好，欢迎拍砖啊</em>。另外，就是这里的推荐的内容了，官方希望我们尽量通过create来创建Obserable，而不是使用继承。</p>
+
+<ul>
+<li><p>订阅者/观察者的使用。咱们知晓了被观察者的创建，接下来就是观察者。它的实现就很简单了。主要是由一些的主要的周期函数构成。在此，就略过了。</p></li>
+<li><p>订阅操作的实现。这个是咱们关注的重头戏。先看代码：</p></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">Subscription</span> <span class="nf">subscribe</span><span class="o">(</span><span class="n">Subscriber</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;</span> <span class="n">subscriber</span><span class="o">,</span> <span class="n">Observable</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">observable</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'><span class="c1">// validate and proceed</span>
+</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">subscriber</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalArgumentException</span><span class="o">(</span><span class="s">&quot;observer can not be null&quot;</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">observable</span><span class="o">.</span><span class="na">onSubscribe</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">throw</span> <span class="k">new</span> <span class="nf">IllegalStateException</span><span class="o">(</span><span class="s">&quot;onSubscribe function can not be null.&quot;</span><span class="o">);</span>
+</span><span class='line'>      <span class="cm">/*</span>
+</span><span class='line'><span class="cm">       * the subscribe function can also be overridden but generally that&#39;s not the appropriate approach</span>
+</span><span class='line'><span class="cm">       * so I won&#39;t mention that in the exception</span>
+</span><span class='line'><span class="cm">       */</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// new Subscriber so onStart it</span>
+</span><span class='line'>  <span class="n">subscriber</span><span class="o">.</span><span class="na">onStart</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="cm">/*</span>
+</span><span class='line'><span class="cm">   * See https://github.com/ReactiveX/RxJava/issues/216 for discussion on &quot;Guideline 6.4: Protect calls</span>
+</span><span class='line'><span class="cm">   * to user code from within an Observer&quot;</span>
+</span><span class='line'><span class="cm">   */</span>
+</span><span class='line'>  <span class="c1">// if not already wrapped</span>
+</span><span class='line'>  <span class="k">if</span> <span class="o">(!(</span><span class="n">subscriber</span> <span class="k">instanceof</span> <span class="n">SafeSubscriber</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>      <span class="c1">// assign to `observer` so we return the protected version</span>
+</span><span class='line'>      <span class="n">subscriber</span> <span class="o">=</span> <span class="k">new</span> <span class="n">SafeSubscriber</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;(</span><span class="n">subscriber</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// The code below is exactly the same an unsafeSubscribe but not used because it would </span>
+</span><span class='line'>  <span class="c1">// add a significant depth to already huge call stacks.</span>
+</span><span class='line'>  <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>      <span class="c1">// allow the hook to intercept and/or decorate</span>
+</span><span class='line'>      <span class="n">hook</span><span class="o">.</span><span class="na">onSubscribeStart</span><span class="o">(</span><span class="n">observable</span><span class="o">,</span> <span class="n">observable</span><span class="o">.</span><span class="na">onSubscribe</span><span class="o">).</span><span class="na">call</span><span class="o">(</span><span class="n">subscriber</span><span class="o">);</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">hook</span><span class="o">.</span><span class="na">onSubscribeReturn</span><span class="o">(</span><span class="n">subscriber</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Throwable</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="c1">// special handling for certain Throwable/Error/Exception types</span>
+</span><span class='line'>      <span class="n">Exceptions</span><span class="o">.</span><span class="na">throwIfFatal</span><span class="o">(</span><span class="n">e</span><span class="o">);</span>
+</span><span class='line'>      <span class="c1">// if an unhandled error occurs executing the onSubscribe we will propagate it</span>
+</span><span class='line'>      <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>          <span class="n">subscriber</span><span class="o">.</span><span class="na">onError</span><span class="o">(</span><span class="n">hook</span><span class="o">.</span><span class="na">onSubscribeError</span><span class="o">(</span><span class="n">e</span><span class="o">));</span>
+</span><span class='line'>      <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Throwable</span> <span class="n">e2</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="n">Exceptions</span><span class="o">.</span><span class="na">throwIfFatal</span><span class="o">(</span><span class="n">e2</span><span class="o">);</span>
+</span><span class='line'>          <span class="c1">// if this happens it means the onError itself failed (perhaps an invalid function implementation)</span>
+</span><span class='line'>          <span class="c1">// so we are unable to propagate the error correctly and will just throw</span>
+</span><span class='line'>          <span class="n">RuntimeException</span> <span class="n">r</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;Error occurred attempting to subscribe [&quot;</span> <span class="o">+</span> <span class="n">e</span><span class="o">.</span><span class="na">getMessage</span><span class="o">()</span> <span class="o">+</span> <span class="s">&quot;] and then again while trying to pass to onError.&quot;</span><span class="o">,</span> <span class="n">e2</span><span class="o">);</span>
+</span><span class='line'>          <span class="c1">// TODO could the hook be the cause of the error in the on error handling.</span>
+</span><span class='line'>          <span class="n">hook</span><span class="o">.</span><span class="na">onSubscribeError</span><span class="o">(</span><span class="n">r</span><span class="o">);</span>
+</span><span class='line'>          <span class="c1">// TODO why aren&#39;t we throwing the hook&#39;s return value.</span>
+</span><span class='line'>          <span class="k">throw</span> <span class="n">r</span><span class="o">;</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">Subscriptions</span><span class="o">.</span><span class="na">unsubscribed</span><span class="o">();</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码略多，能一行行读下来，还是需要相当耐心的。这里，我就从代码中获取到的知识点做些说明：1）首先也是最重要的，当执行了subscribe的方法，就开始执行Subscriber的订阅操作。2）Subscriber的onStart方法，是第一个被调用的。3）在代码中，<em>hook.onSubscribeStart(observable, observable.onSubscribe).call(subscriber)</em>，这句代码主要是获取到observable的onSubscribe属性，然后调用它的call方法，而且参数还是subscriber，很熟悉了，有木有，这就是之前所说的订阅的行为。4）在执行观察者订阅的行为的时候，可能会出现错误，通过捕捉异常，来调用subscriber的onError方法。</p>
+
+<ul>
+<li><p>总结：这里一个简单的完整的订阅与被订阅的流程就结束了，对其原理做以概括：创建一个被观察者，需要给被观察者指定其所<strong>发布的行为（onSubscribe来实现）</strong>；指定观察者时，只需指定相应的观察回调即可；在完成订阅的操作时，是先调用subscriber的onStart方法，之后通过<strong>订阅行为onSubscribe</strong>来调用subscriber完成相应的订阅操作，最后若出现异常则会回调subscriber的onError方法。</p></li>
+<li><p>问题：因为之前看过一些RxJava的介绍文章，提到一点Subscriber的onComplete方法和onError方法是只会执行一个，记不太确切了，是不是这样。
+但是从源码中可以看出，若是执行到onComplete的方法时候，若在其中抛出了一场，那之后Observable的subscribe方法会捕捉异常，又会调用到onError方法，所以这样看的话，onComplete和onError是有机会都执行到的。</p></li>
+</ul>
+
+
+<p>看了这个简单的订阅，产生了一些疑问，也就是接下来要去研究的问题，也是下篇要解决的问题，列举如下：</p>
+
+<ul>
+<li>TODO:
+1) onError和onComplete的执行唯一性
+2）多个观察者是如何处理订阅的？</li>
+</ul>
+
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2015/12/06/RxJava-analyze-one/">/blog/2015/12/06/RxJava-analyze-one/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-12-06T23:53:00+00:00'><span class='date'>2015-12-06</span> <span class='time'>11:53 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2015/12/06/RxJava-analyze-one/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2015/12/06/RxJava-analyze-one/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/11/29/Activity-SwipeBack-Analysize/" title="Previous Post: Activity之SwipeBack原理解析">&laquo; Activity之SwipeBack原理解析</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/12/22/Android-memory-leak-analysis/" title="Next Post: Android内存泄露代码详解">Android内存泄露代码详解 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2015/12/06/RxJava-analyze-one/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2015/12/06/RxJava-analyze-one/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,655 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>创建 Gradle Plugin - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="创建 Gradle Plugin 2016-11-01 6:09 pm | Comments 在使用 Android Studio 开发的同时，必定离不开 Gradle，再加之最近对 Gradle 在 InstanRun 所扮演的角色颇有兴趣。所以，这里先有一个开篇，理解并编写简单的 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2016/11/01/create-gradle-plugin/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">创建 Gradle Plugin</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-11-01T18:09:00+08:00'><span class='date'>2016-11-01</span> <span class='time'>6:09 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>在使用 Android Studio 开发的同时，必定离不开 Gradle，再加之最近对 Gradle 在 InstanRun 所扮演的角色颇有兴趣。所以，这里先有一个开篇，理解并编写简单的 gradle plugin。</p>
+
+<h2>写一个简单的插件</h2>
+
+<p>创建一个 build.gradle 文件</p>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='groovy'><span class='line'><span class="n">apply</span> <span class="nl">plugin:</span> <span class="n">GreetingPlugin</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">class</span> <span class="nc">GreetingPlugin</span> <span class="kd">implements</span> <span class="n">Plugin</span><span class="o">&lt;</span><span class="n">Project</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="nf">apply</span><span class="o">(</span><span class="n">Project</span> <span class="n">project</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">project</span><span class="o">.</span><span class="na">task</span><span class="o">(</span><span class="s1">&#39;hello&#39;</span><span class="o">)</span> <span class="o">&lt;&lt;</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">println</span> <span class="s2">&quot;Hello from the GreetingPlugin&quot;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在当前目录下，执行 <code>gradle -q hello</code>，会得到输出：Hello from the GreetingPlugin</p>
+
+<h2>设置输入参数</h2>
+
+<p>若是需要通过类型来指定参数，可以自定义一个 Extension 相应的 class, 并添加至 project 的 extensions 中，指定名称为 greeting，使用 greeting 来设定参数。替换上面的 build.gradle 文件内容，代码如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='groovy'><span class='line'><span class="n">apply</span> <span class="nl">plugin:</span> <span class="n">GreetingPlugin</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">greeting</span><span class="o">.</span><span class="na">message</span> <span class="o">=</span> <span class="s1">&#39;Hi from Gradle&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">class</span> <span class="nc">GreetingPlugin</span> <span class="kd">implements</span> <span class="n">Plugin</span><span class="o">&lt;</span><span class="n">Project</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="nf">apply</span><span class="o">(</span><span class="n">Project</span> <span class="n">project</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="c1">// Add the &#39;greeting&#39; extension object</span>
+</span><span class='line'>        <span class="n">project</span><span class="o">.</span><span class="na">extensions</span><span class="o">.</span><span class="na">create</span><span class="o">(</span><span class="s2">&quot;greeting&quot;</span><span class="o">,</span> <span class="n">GreetingPluginExtension</span><span class="o">)</span>
+</span><span class='line'>        <span class="c1">// Add a task that uses the configuration</span>
+</span><span class='line'>        <span class="n">project</span><span class="o">.</span><span class="na">task</span><span class="o">(</span><span class="s1">&#39;hello&#39;</span><span class="o">)</span> <span class="o">&lt;&lt;</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">println</span> <span class="n">project</span><span class="o">.</span><span class="na">greeting</span><span class="o">.</span><span class="na">message</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">class</span> <span class="nc">GreetingPluginExtension</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kt">def</span> <span class="n">String</span> <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Hello from GreetingPlugin&#39;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>执行同上命令，会得到输出 Hi from Gradle.</p>
+
+<h2>利用闭包输入参数</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='groovy'><span class='line'><span class="n">apply</span> <span class="nl">plugin:</span> <span class="n">GreetingPlugin</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">greeting</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">message</span> <span class="o">=</span> <span class="s1">&#39;Hi&#39;</span>
+</span><span class='line'>    <span class="n">greeter</span> <span class="o">=</span> <span class="s1">&#39;Gradle&#39;</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">class</span> <span class="nc">GreetingPlugin</span> <span class="kd">implements</span> <span class="n">Plugin</span><span class="o">&lt;</span><span class="n">Project</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="nf">apply</span><span class="o">(</span><span class="n">Project</span> <span class="n">project</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">project</span><span class="o">.</span><span class="na">extensions</span><span class="o">.</span><span class="na">create</span><span class="o">(</span><span class="s2">&quot;greeting&quot;</span><span class="o">,</span> <span class="n">GreetingPluginExtension</span><span class="o">)</span>
+</span><span class='line'>        <span class="n">project</span><span class="o">.</span><span class="na">task</span><span class="o">(</span><span class="s1">&#39;hello&#39;</span><span class="o">)</span> <span class="o">&lt;&lt;</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">println</span> <span class="s2">&quot;${project.greeting.message} from ${project.greeting.greeter}&quot;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">class</span> <span class="nc">GreetingPluginExtension</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">String</span> <span class="n">message</span>
+</span><span class='line'>    <span class="n">String</span> <span class="n">greeter</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过以闭包的格式来设置 greeting 参数 message 和 greeter，来控制输出。
+执行之后，会得到输出 Hi from Gradle.</p>
+
+<h2>输出文件</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='groovy'><span class='line'><span class="kd">class</span> <span class="nc">GreetingToFileTask</span> <span class="kd">extends</span> <span class="n">DefaultTask</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">def</span> <span class="n">destination</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">File</span> <span class="nf">getDestination</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">project</span><span class="o">.</span><span class="na">file</span><span class="o">(</span><span class="n">destination</span><span class="o">)</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nd">@TaskAction</span>
+</span><span class='line'>    <span class="kt">def</span> <span class="nf">greet</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kt">def</span> <span class="n">file</span> <span class="o">=</span> <span class="n">getDestination</span><span class="o">()</span>
+</span><span class='line'>        <span class="n">file</span><span class="o">.</span><span class="na">parentFile</span><span class="o">.</span><span class="na">mkdirs</span><span class="o">()</span>
+</span><span class='line'>        <span class="n">file</span><span class="o">.</span><span class="na">write</span> <span class="s2">&quot;Hello!&quot;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">task</span> <span class="nf">greet</span><span class="o">(</span><span class="nl">type:</span> <span class="n">GreetingToFileTask</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">destination</span> <span class="o">=</span> <span class="o">{</span> <span class="n">project</span><span class="o">.</span><span class="na">greetingFile</span> <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">task</span> <span class="nf">sayGreeting</span><span class="o">(</span><span class="nl">dependsOn:</span> <span class="n">greet</span><span class="o">)</span> <span class="o">&lt;&lt;</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">println</span> <span class="nf">file</span><span class="o">(</span><span class="n">greetingFile</span><span class="o">).</span><span class="na">text</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">ext</span><span class="o">.</span><span class="na">greetingFile</span> <span class="o">=</span> <span class="s2">&quot;$buildDir/hello.txt&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码中首先定义了 <code>GreetingToFileTask</code> 的 task，含有一个属性名称为 <code>destination</code>，通过使用 <code>@TaskAction</code> 的注解，指定了该 task 所执行的内容。之后，将其以参数的形式传至 <code>greet</code> 的 task 之中，并设置了 destination 属性的值为当前目录下 <code>build/hello.txt</code>。最后使用 sayGreeting 的 task 来依赖 greet。
+在当前目录下，执行 <code>gradle -q sayGreeting</code>, 会得到 Hello! 的输出，并会创建 build 目录，及其下面 hello.txt 的文件且其内容为 Hello!。</p>
+
+<h2>项目创建</h2>
+
+<p>1.在新的 Library 中，将其中的 build.gradle 文件改为如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='groovy'><span class='line'><span class="n">apply</span> <span class="nl">plugin:</span> <span class="s1">&#39;groovy&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">dependencies</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">compile</span> <span class="nf">gradleApi</span><span class="o">()</span>
+</span><span class='line'>    <span class="n">compile</span> <span class="nf">localGroovy</span><span class="o">()</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>2.编写 groovy 插件代码
+在 src/main 目录下，建立 groovy 文件夹，之后是相应的包名路径，在路径下创建 GreetingPlugin.groovy 的文件，内容如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='groovy'><span class='line'><span class="kn">package</span> <span class="n">com</span><span class="o">.</span><span class="na">lighters</span><span class="o">.</span><span class="na">gradle</span><span class="o">.</span><span class="na">lib</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">org.gradle.api.Plugin</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">org.gradle.api.Project</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">class</span> <span class="nc">GreetingPlugin</span> <span class="kd">implements</span> <span class="n">Plugin</span><span class="o">&lt;</span><span class="n">Project</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="nf">apply</span><span class="o">(</span><span class="n">Project</span> <span class="n">project</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">project</span><span class="o">.</span><span class="na">task</span><span class="o">(</span><span class="s1">&#39;hello&#39;</span><span class="o">)</span> <span class="o">&lt;&lt;</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">println</span> <span class="s2">&quot;hello&quot;</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>3.配置插件，编写 <code>src/main/resources/META-INF/gradle-plugins/com.lighters.gradletest.properties</code>，设置其内容，为相应的类名称：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='groovy'><span class='line'><span class="n">implementation</span><span class="o">-</span><span class="n">class</span><span class="o">=</span><span class="n">com</span><span class="o">.</span><span class="na">lighters</span><span class="o">.</span><span class="na">gradle</span><span class="o">.</span><span class="na">lib</span><span class="o">.</span><span class="na">GreetingPlugin</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>4.发布至本地仓库
+在 Library 的 build.gradle 文件中，添加如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='groovy'><span class='line'><span class="n">repositories</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">mavenCentral</span><span class="o">()</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'><span class="n">group</span><span class="o">=</span><span class="s1">&#39;com.lighters.gradle.lib&#39;</span>
+</span><span class='line'><span class="n">version</span><span class="o">=</span><span class="s1">&#39;1.0.1&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">uploadArchives</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">repositories</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">mavenDeployer</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">repository</span><span class="o">(</span><span class="nl">url:</span> <span class="n">uri</span><span class="o">(</span><span class="s1">&#39;../repo&#39;</span><span class="o">))</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>之后，执行 gradle 刷新同步任务，会在 other 中，看到 uploadArchives 的任务，执行这个任务，就会在本地创建好 repo 的仓库。</p>
+
+<p>5.在主项目中引入使用如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='groovy'><span class='line'><span class="n">buildscript</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">repositories</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">maven</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">url</span> <span class="nf">uri</span><span class="o">(</span><span class="s1">&#39;../repo&#39;</span><span class="o">)</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="n">dependencies</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">classpath</span> <span class="nl">group:</span> <span class="s1">&#39;com.lighters.gradle.lib&#39;</span><span class="o">,</span> <span class="nl">name:</span> <span class="s1">&#39;gradletest&#39;</span><span class="o">,</span>
+</span><span class='line'>                  <span class="nl">version:</span> <span class="s1">&#39;1.0.1&#39;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'><span class="n">apply</span> <span class="nl">plugin:</span> <span class="s1">&#39;com.lighters.gradletest&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Gradle 任务 build 完成之后，会看到一个新多出来的 hello 任务，执行这个任务，则可得到 &ldquo;hello&rdquo; 的输出。</p>
+
+<h2>扩展</h2>
+
+<ul>
+<li><p>自定义 Task
+可通过实现 <a href="https://docs.gradle.org/current/javadoc/org/gradle/api/DefaultTask.html">DefaultTask</a> ，来定义 Task, 通过使用 TaskAction 注解的形式，来指定 task 的输出行为。</p></li>
+<li><p>参数传递
+使用 project 对象的 extendtions 参数来创建参数对象，如下：</p></li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='groovy'><span class='line'><span class="n">project</span><span class="o">.</span><span class="na">extensions</span><span class="o">.</span><span class="na">create</span><span class="o">(</span><span class="s1">&#39;myArgs&#39;</span><span class="o">,</span> <span class="n">MyCustomPluginExtension</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<blockquote><p>其中，MyCustomPluginExtension 是一个简单的对象，只指定属性字段即可。</p></blockquote>
+
+<p>另外，也可指定 <code>myArgs</code> 参数，来实现嵌套参数：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='groovy'><span class='line'> <span class="n">project</span><span class="o">.</span><span class="na">myArgs</span><span class="o">.</span><span class="na">extensions</span><span class="o">.</span><span class="na">create</span><span class="o">(</span><span class="s1">&#39;nestArgs&#39;</span><span class="o">,</span> <span class="n">MyNestPluginExtension</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Demo</h2>
+
+<p>具体代码，可参照：<a href="https://github.com/alighters/GradleDemos">GradleDemos</a></p>
+
+<h2>参考资料</h2>
+
+<ul>
+<li><a href="https://docs.gradle.org/current/userguide/custom_plugins.html">Writing Custom Plugins</a></li>
+<li><a href="https://docs.gradle.org/current/userguide/custom_tasks.html">Writing Custom Task Classes</a></li>
+<li><a href="http://blog.csdn.net/sbsujjbcy/article/details/50782830">如何使用Android Studio开发Gradle插件</a></li>
+<li><a href="http://blog.csdn.net/liuhongwei123888/article/details/50541759">自定义Gradle插件（一）</a></li>
+<li><a href="http://blog.csdn.net/liuhongwei123888/article/details/50542104">自定义Gradle插件（二）</a></li>
+</ul>
+
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2016/11/01/create-gradle-plugin/">/blog/2016/11/01/create-gradle-plugin/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2016-11-01T18:09:00+08:00'><span class='date'>2016-11-01</span> <span class='time'>6:09 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2016/11/01/create-gradle-plugin/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2016/11/01/create-gradle-plugin/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/10/27/bit-skill/" title="Previous Post: 位运算之巧用">&laquo; 位运算之巧用</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/11/01/multidex-problems/" title="Next Post: Multidex 的问题">Multidex 的问题 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2016/11/01/create-gradle-plugin/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2016/11/01/create-gradle-plugin/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

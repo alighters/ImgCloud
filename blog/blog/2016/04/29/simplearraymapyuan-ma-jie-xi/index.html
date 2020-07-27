@@ -1,0 +1,1237 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>SimpleArrayMap源码解析 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="SimpleArrayMap源码解析 2016-04-29 2:01 pm | Comments 本文SimpleArrayMap源码分析是基于support v4 23.3.0版本的。
+另外，因ArrayMap涉及的多是算法知识，而主要的思想比较简单，所以本文会主要以代码为主，细讲其每个实现 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">SimpleArrayMap源码解析</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-04-29T14:01:00+08:00'><span class='date'>2016-04-29</span> <span class='time'>2:01 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><blockquote><p>本文SimpleArrayMap源码分析是基于<strong>support v4 23.3.0</strong>版本的。
+另外，因ArrayMap涉及的多是算法知识，而主要的思想比较简单，所以本文会主要以代码为主，细讲其每个实现。</p></blockquote>
+
+<h2>为什么要引入ArrayMap？</h2>
+
+<p>  在Android设备上，因为App的内存限制，出现OOM的错误，导致开发者不得不关注一些底层数据结构以及去分析App的内存使用情况。提及数据结构，HashMap是我们最经常使用到的，而我们是否会注意其实现的细节以及有什么优缺点呢？</p>
+
+<!-- more -->
+
+
+<p>  这里简单提及一下HashMap在扩容时采取的做法是：将当前的数据结构所占空间*2，而这对安卓稀缺的资源来说，可是非常大的消耗。所以就诞生了ArrayMap，它是在API19引入的，这样我们在兼容以前版本的时候，support包就派上用场了，可是为什么不直接是使用ArrayMap，而会多出来一个SimpleArrayMap呢？不得不说这是谷歌的厚道、人性化处，考虑我们使用ArrayMap时，可能不需要使用Java标准的集合API，而给我们提供的一个纯算法实现的ArrayMap。</p>
+
+<p>  上面提到的集合API，是SimpleArrayMap跟v4包中的ArrayMap最大的区别，证明就是ArrayMap继承了SimpleArrayMap，又实现了Map的接口；主要的操作，则是通过引入MapCollections类，使用Map中的Entry结构，这样在ArrayMap中就可以通过<code>Iterator</code>来进行数据的的迭代操作。</p>
+
+<h2>实现思想</h2>
+
+<p>  简单地了解一下其思想，是我们接下来进行源码分析的必要步骤，方便我们带着问题去验证我们所想。兵马未动，粮草先行。做事前一定要先把准备工作做好，事情理顺，尽量地充分考虑工作的细节 ，再开始进行工作。正如我们现在项目开发之前，一定要先进行任务点的分解，而这时思维导图、UML建模工具则是我们必须玩转的东西。</p>
+
+<ul>
+<li>思想：SimpleArrayMap采用了两个数组来进行hash值与key、value值得保存，另外，数组大小超过8时，并需要进行扩容时，只增大当前数组大小的一半，并对大小为4和8的数组进行缓存。这样最后带来的好处就是最大程度保证了数组空间都能够被使用，一定程度上避免了内存空间的浪费。</li>
+<li>数据结构方式：使用了两个数组，一个是Hash数组，另一个是大小*2的Array数组，为了保证通用性，这里所使用的是Object数组。Array数组中使用key+value间隔存取的方式，偶数为即<code>0 -&gt; key1 1 -&gt; value1 2 -&gt; key2 3 -&gt; value2</code>。另外Hash数组，则是对应的Key的Hash值数组，并且这是一个有序的int数组，这样在进行Key的查找时，使用二分查找则是最有效率的方式了。如下图：</li>
+</ul>
+
+
+<p> <img src="http://alighters.github.io/imgs/SimpleArrayMap%E7%BB%93%E6%9E%84%E6%88%AA%E5%9B%BE.png" alt="SimpleArrayMap结构图" /></p>
+
+<h2>数据结构定义</h2>
+
+<h3>1.数据结构</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kt">int</span><span class="o">[]</span> <span class="n">mHashes</span><span class="o">;</span>
+</span><span class='line'><span class="n">Object</span><span class="o">[]</span> <span class="n">mArray</span><span class="o">;</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">mSize</span><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码中，<code>mHashes</code>数组为<code>mArray</code>中的key对应的hash值得数组，而<code>mArray</code>即是<code>HashMap</code>中key与value间隔混合的一个数组。</p>
+
+<h3>2.初始化</h3>
+
+<ul>
+<li>默认构造器(初始大小为0)</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Create a new empty ArrayMap.  The default capacity of an array map is 0, and</span>
+</span><span class='line'><span class="cm"> * will grow once items are added to it.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">public</span> <span class="nf">SimpleArrayMap</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">mHashes</span> <span class="o">=</span> <span class="n">ContainerHelpers</span><span class="o">.</span><span class="na">EMPTY_INTS</span><span class="o">;</span>
+</span><span class='line'>   <span class="n">mArray</span> <span class="o">=</span> <span class="n">ContainerHelpers</span><span class="o">.</span><span class="na">EMPTY_OBJECTS</span><span class="o">;</span>
+</span><span class='line'>   <span class="n">mSize</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>指定初始大小</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Create a new ArrayMap with a given initial capacity.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">public</span> <span class="nf">SimpleArrayMap</span><span class="o">(</span><span class="kt">int</span> <span class="n">capacity</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">capacity</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">mHashes</span> <span class="o">=</span> <span class="n">ContainerHelpers</span><span class="o">.</span><span class="na">EMPTY_INTS</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">mArray</span> <span class="o">=</span> <span class="n">ContainerHelpers</span><span class="o">.</span><span class="na">EMPTY_OBJECTS</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">allocArrays</span><span class="o">(</span><span class="n">capacity</span><span class="o">);</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>   <span class="n">mSize</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>通过SimpleArrayMap赋值</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Create a new ArrayMap with the mappings from the given ArrayMap.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">public</span> <span class="nf">SimpleArrayMap</span><span class="o">(</span><span class="n">SimpleArrayMap</span> <span class="n">map</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">this</span><span class="o">();</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">map</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">putAll</span><span class="o">(</span><span class="n">map</span><span class="o">);</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>3.释放</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Make the array map empty.  All storage is released.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">clear</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">mSize</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">freeArrays</span><span class="o">(</span><span class="n">mHashes</span><span class="o">,</span> <span class="n">mArray</span><span class="o">,</span> <span class="n">mSize</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">mHashes</span> <span class="o">=</span> <span class="n">ContainerHelpers</span><span class="o">.</span><span class="na">EMPTY_INTS</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">mArray</span> <span class="o">=</span> <span class="n">ContainerHelpers</span><span class="o">.</span><span class="na">EMPTY_OBJECTS</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">mSize</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码中提及的<code>EMPTY_INTS</code>及<code>EMPTY_OBJECTS</code>，仅仅如下的两个空数组:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span><span class="o">[]</span> <span class="n">EMPTY_INTS</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">static</span> <span class="kd">final</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">EMPTY_OBJECTS</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Object</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>算法</h2>
+
+<h3>1. 存数据put(key, value)</h3>
+
+<p>存数据的操作，按我们数据结构的定义，应该是需要针对key，获取其对应的hash值，在Hash数组中，采取二分查找，定位到指定hash值所对应的index值；之后根据index值，来调整并存放key跟value的值。来看看源码的实现吧：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Add a new value to the array map.</span>
+</span><span class='line'><span class="cm"> * @param key The key under which to store the value.  &lt;b&gt;Must not be null.&lt;/b&gt;  If</span>
+</span><span class='line'><span class="cm"> * this key already exists in the array, its value will be replaced.</span>
+</span><span class='line'><span class="cm"> * @param value The value to store for the given key.</span>
+</span><span class='line'><span class="cm"> * @return Returns the old value that was stored for the given key, or null if there</span>
+</span><span class='line'><span class="cm"> * was no such key.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">public</span> <span class="n">V</span> <span class="nf">put</span><span class="o">(</span><span class="n">K</span> <span class="n">key</span><span class="o">,</span> <span class="n">V</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="kd">final</span> <span class="kt">int</span> <span class="n">hash</span><span class="o">;</span>
+</span><span class='line'>   <span class="kt">int</span> <span class="n">index</span><span class="o">;</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">key</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="c1">// 查找key为null的情况</span>
+</span><span class='line'>      <span class="n">hash</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">index</span> <span class="o">=</span> <span class="n">indexOfNull</span><span class="o">();</span>
+</span><span class='line'>   <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">hash</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="na">hashCode</span><span class="o">();</span>
+</span><span class='line'>      <span class="n">index</span> <span class="o">=</span> <span class="n">indexOf</span><span class="o">(</span><span class="n">key</span><span class="o">,</span> <span class="n">hash</span><span class="o">);</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="c1">// 数组中存在相同的key，则更新并返回旧的值</span>
+</span><span class='line'>      <span class="n">index</span> <span class="o">=</span> <span class="o">(</span><span class="n">index</span><span class="o">&lt;&lt;</span><span class="mi">1</span><span class="o">)</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>      <span class="kd">final</span> <span class="n">V</span> <span class="n">old</span> <span class="o">=</span> <span class="o">(</span><span class="n">V</span><span class="o">)</span><span class="n">mArray</span><span class="o">[</span><span class="n">index</span><span class="o">];</span>
+</span><span class='line'>      <span class="n">mArray</span><span class="o">[</span><span class="n">index</span><span class="o">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">;</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">old</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="n">index</span> <span class="o">=</span> <span class="o">~</span><span class="n">index</span><span class="o">;</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">mSize</span> <span class="o">&gt;=</span> <span class="n">mHashes</span><span class="o">.</span><span class="na">length</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="c1">// 当容量不够时，需要建立一个新的数组，来进行扩容操作。</span>
+</span><span class='line'>      <span class="kd">final</span> <span class="kt">int</span> <span class="n">n</span> <span class="o">=</span> <span class="n">mSize</span> <span class="o">&gt;=</span> <span class="o">(</span><span class="n">BASE_SIZE</span><span class="o">*</span><span class="mi">2</span><span class="o">)</span> <span class="o">?</span> <span class="o">(</span><span class="n">mSize</span><span class="o">+(</span><span class="n">mSize</span><span class="o">&gt;&gt;</span><span class="mi">1</span><span class="o">))</span>
+</span><span class='line'>         <span class="o">:</span> <span class="o">(</span><span class="n">mSize</span> <span class="o">&gt;=</span> <span class="n">BASE_SIZE</span> <span class="o">?</span> <span class="o">(</span><span class="n">BASE_SIZE</span><span class="o">*</span><span class="mi">2</span><span class="o">)</span> <span class="o">:</span> <span class="n">BASE_SIZE</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">DEBUG</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;put: grow from &quot;</span> <span class="o">+</span> <span class="n">mHashes</span><span class="o">.</span><span class="na">length</span> <span class="o">+</span> <span class="s">&quot; to &quot;</span> <span class="o">+</span> <span class="n">n</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="kd">final</span> <span class="kt">int</span><span class="o">[]</span> <span class="n">ohashes</span> <span class="o">=</span> <span class="n">mHashes</span><span class="o">;</span>
+</span><span class='line'>      <span class="kd">final</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">oarray</span> <span class="o">=</span> <span class="n">mArray</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">allocArrays</span><span class="o">(</span><span class="n">n</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">mHashes</span><span class="o">.</span><span class="na">length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>         <span class="k">if</span> <span class="o">(</span><span class="n">DEBUG</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;put: copy 0-&quot;</span> <span class="o">+</span> <span class="n">mSize</span> <span class="o">+</span> <span class="s">&quot; to 0&quot;</span><span class="o">);</span>
+</span><span class='line'>         <span class="n">System</span><span class="o">.</span><span class="na">arraycopy</span><span class="o">(</span><span class="n">ohashes</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">mHashes</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">ohashes</span><span class="o">.</span><span class="na">length</span><span class="o">);</span>
+</span><span class='line'>         <span class="n">System</span><span class="o">.</span><span class="na">arraycopy</span><span class="o">(</span><span class="n">oarray</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">mArray</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">oarray</span><span class="o">.</span><span class="na">length</span><span class="o">);</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="n">freeArrays</span><span class="o">(</span><span class="n">ohashes</span><span class="o">,</span> <span class="n">oarray</span><span class="o">,</span> <span class="n">mSize</span><span class="o">);</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// 将index之后的数据进行后移</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">mSize</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">DEBUG</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;put: move &quot;</span> <span class="o">+</span> <span class="n">index</span> <span class="o">+</span> <span class="s">&quot;-&quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">mSize</span><span class="o">-</span><span class="n">index</span><span class="o">)</span>
+</span><span class='line'>            <span class="o">+</span> <span class="s">&quot; to &quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">index</span><span class="o">+</span><span class="mi">1</span><span class="o">));</span>
+</span><span class='line'>      <span class="n">System</span><span class="o">.</span><span class="na">arraycopy</span><span class="o">(</span><span class="n">mHashes</span><span class="o">,</span> <span class="n">index</span><span class="o">,</span> <span class="n">mHashes</span><span class="o">,</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="o">,</span> <span class="n">mSize</span> <span class="o">-</span> <span class="n">index</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">System</span><span class="o">.</span><span class="na">arraycopy</span><span class="o">(</span><span class="n">mArray</span><span class="o">,</span> <span class="n">index</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">,</span> <span class="n">mArray</span><span class="o">,</span> <span class="o">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">,</span> <span class="o">(</span><span class="n">mSize</span> <span class="o">-</span> <span class="n">index</span><span class="o">)</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">);</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// 赋值给index位置上hash值</span>
+</span><span class='line'>   <span class="n">mHashes</span><span class="o">[</span><span class="n">index</span><span class="o">]</span> <span class="o">=</span> <span class="n">hash</span><span class="o">;</span>
+</span><span class='line'>   <span class="c1">// 更新array数组中对应的key跟value值。</span>
+</span><span class='line'>   <span class="n">mArray</span><span class="o">[</span><span class="n">index</span><span class="o">&lt;&lt;</span><span class="mi">1</span><span class="o">]</span> <span class="o">=</span> <span class="n">key</span><span class="o">;</span>
+</span><span class='line'>   <span class="n">mArray</span><span class="o">[(</span><span class="n">index</span><span class="o">&lt;&lt;</span><span class="mi">1</span><span class="o">)+</span><span class="mi">1</span><span class="o">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">;</span>
+</span><span class='line'>   <span class="n">mSize</span><span class="o">++;</span>
+</span><span class='line'>   <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码中，可以看出arrayMap允许key为空，所有的key都不能重复。
+另外，在进行容量修改的时候，进行的操作是：mSize跟hash数组长度的判断，当大于等于的时候，需要对数组的容量进行一些扩容，并拷贝数组到新的数组中。（扩容操作：当size大于8, 取size + size /2 ; 当size大于4小于8时， 取8 ，当size小于4时，取4）</p>
+
+<h3>2. 取数据get（key)</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Retrieve a value from the array.</span>
+</span><span class='line'><span class="cm"> * @param key The key of the value to retrieve.</span>
+</span><span class='line'><span class="cm"> * @return Returns the value associated with the given key,</span>
+</span><span class='line'><span class="cm"> * or null if there is no such key.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">public</span> <span class="n">V</span> <span class="nf">get</span><span class="o">(</span><span class="n">Object</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="kd">final</span> <span class="kt">int</span> <span class="n">index</span> <span class="o">=</span> <span class="n">indexOfKey</span><span class="o">(</span><span class="n">key</span><span class="o">);</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">index</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="o">?</span> <span class="o">(</span><span class="n">V</span><span class="o">)</span><span class="n">mArray</span><span class="o">[(</span><span class="n">index</span><span class="o">&lt;&lt;</span><span class="mi">1</span><span class="o">)+</span><span class="mi">1</span><span class="o">]</span> <span class="o">:</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过key来获取数据就非常简单了，根据key获取到相应的index值，在array数据中根据index乘2加1返回相应的value即可。</p>
+
+<h3>3. 删除数据remove（key）</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Remove an existing key from the array map.</span>
+</span><span class='line'><span class="cm"> * @param key The key of the mapping to remove.</span>
+</span><span class='line'><span class="cm"> * @return Returns the value that was stored under the key, or null if there</span>
+</span><span class='line'><span class="cm"> * was no such key.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">public</span> <span class="n">V</span> <span class="nf">remove</span><span class="o">(</span><span class="n">Object</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="kd">final</span> <span class="kt">int</span> <span class="n">index</span> <span class="o">=</span> <span class="n">indexOfKey</span><span class="o">(</span><span class="n">key</span><span class="o">);</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nf">removeAt</span><span class="o">(</span><span class="n">index</span><span class="o">);</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>根据key来删除时，先会根据key来获取其对应的index值，再通过<code>removeAt(int index)</code>方法来进行删除操作。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Remove the key/value mapping at the given index.</span>
+</span><span class='line'><span class="cm"> * @param index The desired index, must be between 0 and {@link #size()}-1.</span>
+</span><span class='line'><span class="cm"> * @return Returns the value that was stored at this index.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">public</span> <span class="n">V</span> <span class="nf">removeAt</span><span class="o">(</span><span class="kt">int</span> <span class="n">index</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="kd">final</span> <span class="n">Object</span> <span class="n">old</span> <span class="o">=</span> <span class="n">mArray</span><span class="o">[(</span><span class="n">index</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">)</span> <span class="o">+</span> <span class="mi">1</span><span class="o">];</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">mSize</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="c1">// Now empty.</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">DEBUG</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;remove: shrink from &quot;</span> <span class="o">+</span> <span class="n">mHashes</span><span class="o">.</span><span class="na">length</span> <span class="o">+</span> <span class="s">&quot; to 0&quot;</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">freeArrays</span><span class="o">(</span><span class="n">mHashes</span><span class="o">,</span> <span class="n">mArray</span><span class="o">,</span> <span class="n">mSize</span><span class="o">);</span>
+</span><span class='line'>      <span class="n">mHashes</span> <span class="o">=</span> <span class="n">ContainerHelpers</span><span class="o">.</span><span class="na">EMPTY_INTS</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">mArray</span> <span class="o">=</span> <span class="n">ContainerHelpers</span><span class="o">.</span><span class="na">EMPTY_OBJECTS</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">mSize</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>      <span class="c1">// 满足条件，对数组进行加入缓存的操作。</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">mHashes</span><span class="o">.</span><span class="na">length</span> <span class="o">&gt;</span> <span class="o">(</span><span class="n">BASE_SIZE</span><span class="o">*</span><span class="mi">2</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="n">mSize</span> <span class="o">&lt;</span> <span class="n">mHashes</span><span class="o">.</span><span class="na">length</span><span class="o">/</span><span class="mi">3</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>         <span class="c1">// Shrunk enough to reduce size of arrays.  We don&#39;t allow it to</span>
+</span><span class='line'>         <span class="c1">// shrink smaller than (BASE_SIZE*2) to avoid flapping between</span>
+</span><span class='line'>         <span class="c1">// that and BASE_SIZE.</span>
+</span><span class='line'>         <span class="kd">final</span> <span class="kt">int</span> <span class="n">n</span> <span class="o">=</span> <span class="n">mSize</span> <span class="o">&gt;</span> <span class="o">(</span><span class="n">BASE_SIZE</span><span class="o">*</span><span class="mi">2</span><span class="o">)</span> <span class="o">?</span> <span class="o">(</span><span class="n">mSize</span> <span class="o">+</span> <span class="o">(</span><span class="n">mSize</span><span class="o">&gt;&gt;</span><span class="mi">1</span><span class="o">))</span> <span class="o">:</span> <span class="o">(</span><span class="n">BASE_SIZE</span><span class="o">*</span><span class="mi">2</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>         <span class="k">if</span> <span class="o">(</span><span class="n">DEBUG</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;remove: shrink from &quot;</span> <span class="o">+</span> <span class="n">mHashes</span><span class="o">.</span><span class="na">length</span> <span class="o">+</span> <span class="s">&quot; to &quot;</span> <span class="o">+</span> <span class="n">n</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>         <span class="kd">final</span> <span class="kt">int</span><span class="o">[]</span> <span class="n">ohashes</span> <span class="o">=</span> <span class="n">mHashes</span><span class="o">;</span>
+</span><span class='line'>         <span class="kd">final</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">oarray</span> <span class="o">=</span> <span class="n">mArray</span><span class="o">;</span>
+</span><span class='line'>         <span class="n">allocArrays</span><span class="o">(</span><span class="n">n</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>         <span class="n">mSize</span><span class="o">--;</span>
+</span><span class='line'>         <span class="k">if</span> <span class="o">(</span><span class="n">index</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">DEBUG</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;remove: copy from 0-&quot;</span> <span class="o">+</span> <span class="n">index</span> <span class="o">+</span> <span class="s">&quot; to 0&quot;</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">arraycopy</span><span class="o">(</span><span class="n">ohashes</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">mHashes</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">index</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">arraycopy</span><span class="o">(</span><span class="n">oarray</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">mArray</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">index</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">);</span>
+</span><span class='line'>         <span class="o">}</span>
+</span><span class='line'>         <span class="k">if</span> <span class="o">(</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">mSize</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">DEBUG</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;remove: copy from &quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">index</span><span class="o">+</span><span class="mi">1</span><span class="o">)</span> <span class="o">+</span> <span class="s">&quot;-&quot;</span> <span class="o">+</span> <span class="n">mSize</span>
+</span><span class='line'>                  <span class="o">+</span> <span class="s">&quot; to &quot;</span> <span class="o">+</span> <span class="n">index</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">arraycopy</span><span class="o">(</span><span class="n">ohashes</span><span class="o">,</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="o">,</span> <span class="n">mHashes</span><span class="o">,</span> <span class="n">index</span><span class="o">,</span> <span class="n">mSize</span> <span class="o">-</span> <span class="n">index</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">arraycopy</span><span class="o">(</span><span class="n">oarray</span><span class="o">,</span> <span class="o">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">,</span> <span class="n">mArray</span><span class="o">,</span> <span class="n">index</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">,</span>
+</span><span class='line'>                  <span class="o">(</span><span class="n">mSize</span> <span class="o">-</span> <span class="n">index</span><span class="o">)</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">);</span>
+</span><span class='line'>         <span class="o">}</span>
+</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>         <span class="n">mSize</span><span class="o">--;</span>
+</span><span class='line'>         <span class="k">if</span> <span class="o">(</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">mSize</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">DEBUG</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;remove: move &quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">index</span><span class="o">+</span><span class="mi">1</span><span class="o">)</span> <span class="o">+</span> <span class="s">&quot;-&quot;</span> <span class="o">+</span> <span class="n">mSize</span>
+</span><span class='line'>                  <span class="o">+</span> <span class="s">&quot; to &quot;</span> <span class="o">+</span> <span class="n">index</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">arraycopy</span><span class="o">(</span><span class="n">mHashes</span><span class="o">,</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="o">,</span> <span class="n">mHashes</span><span class="o">,</span> <span class="n">index</span><span class="o">,</span> <span class="n">mSize</span> <span class="o">-</span> <span class="n">index</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">arraycopy</span><span class="o">(</span><span class="n">mArray</span><span class="o">,</span> <span class="o">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">,</span> <span class="n">mArray</span><span class="o">,</span> <span class="n">index</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">,</span>
+</span><span class='line'>                  <span class="o">(</span><span class="n">mSize</span> <span class="o">-</span> <span class="n">index</span><span class="o">)</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">);</span>
+</span><span class='line'>         <span class="o">}</span>
+</span><span class='line'>         <span class="n">mArray</span><span class="o">[</span><span class="n">mSize</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">]</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>         <span class="n">mArray</span><span class="o">[(</span><span class="n">mSize</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">)</span> <span class="o">+</span> <span class="mi">1</span><span class="o">]</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>   <span class="k">return</span> <span class="o">(</span><span class="n">V</span><span class="o">)</span><span class="n">old</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里先忽略hash数组长度的判断（主要进行数组缓存的操作）只看主要的代码，即最后的一个else的代码，使用System.arraycopy方法将hash数组跟array数组中index之后的数据往前移动1位，而将最后一位的数据进行至空。</p>
+
+<h3>4. indexOfKey (key)</h3>
+
+<p>上面代码中，都可以看到<code>indexOfKey</code>身影的出现，来看到其中如何实现的：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Returns the index of a key in the set.</span>
+</span><span class='line'><span class="cm"> *</span>
+</span><span class='line'><span class="cm"> * @param key The key to search for.</span>
+</span><span class='line'><span class="cm"> * @return Returns the index of the key if it exists, else a negative integer.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">public</span> <span class="kt">int</span> <span class="nf">indexOfKey</span><span class="o">(</span><span class="n">Object</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">key</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">?</span> <span class="n">indexOfNull</span><span class="o">()</span> <span class="o">:</span> <span class="n">indexOf</span><span class="o">(</span><span class="n">key</span><span class="o">,</span> <span class="n">key</span><span class="o">.</span><span class="na">hashCode</span><span class="o">());</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>由上发现允许key为null，进行index的查询，当key不为空时，通过key及其key的hashCode,来进行查询。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kt">int</span> <span class="nf">indexOf</span><span class="o">(</span><span class="n">Object</span> <span class="n">key</span><span class="o">,</span> <span class="kt">int</span> <span class="n">hash</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="kd">final</span> <span class="kt">int</span> <span class="n">N</span> <span class="o">=</span> <span class="n">mSize</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// Important fast case: if nothing is in here, nothing to look for.</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">N</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="o">~</span><span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="kt">int</span> <span class="n">index</span> <span class="o">=</span> <span class="n">ContainerHelpers</span><span class="o">.</span><span class="na">binarySearch</span><span class="o">(</span><span class="n">mHashes</span><span class="o">,</span> <span class="n">N</span><span class="o">,</span> <span class="n">hash</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// If the hash code wasn&#39;t found, then we have no entry for this key.</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">index</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">index</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// If the key at the returned index matches, that&#39;s what we want.</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">key</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">mArray</span><span class="o">[</span><span class="n">index</span><span class="o">&lt;&lt;</span><span class="mi">1</span><span class="o">]))</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">index</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// Search for a matching key after the index.</span>
+</span><span class='line'>   <span class="kt">int</span> <span class="n">end</span><span class="o">;</span>
+</span><span class='line'>   <span class="k">for</span> <span class="o">(</span><span class="n">end</span> <span class="o">=</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;</span> <span class="n">end</span> <span class="o">&lt;</span> <span class="n">N</span> <span class="o">&amp;&amp;</span> <span class="n">mHashes</span><span class="o">[</span><span class="n">end</span><span class="o">]</span> <span class="o">==</span> <span class="n">hash</span><span class="o">;</span> <span class="n">end</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">key</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">mArray</span><span class="o">[</span><span class="n">end</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">]))</span> <span class="k">return</span> <span class="n">end</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// Search for a matching key before the index.</span>
+</span><span class='line'>   <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">index</span> <span class="o">-</span> <span class="mi">1</span><span class="o">;</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">mHashes</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">==</span> <span class="n">hash</span><span class="o">;</span> <span class="n">i</span><span class="o">--)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">key</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">mArray</span><span class="o">[</span><span class="n">i</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">]))</span> <span class="k">return</span> <span class="n">i</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// Key not found -- return negative value indicating where a</span>
+</span><span class='line'>   <span class="c1">// new entry for this key should go.  We use the end of the</span>
+</span><span class='line'>   <span class="c1">// hash chain to reduce the number of array entries that will</span>
+</span><span class='line'>   <span class="c1">// need to be copied when inserting.</span>
+</span><span class='line'>   <span class="k">return</span> <span class="o">~</span><span class="n">end</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码中，是先对Hash数组进行二分查找，获取index，之后根据index获取hash数组中对应的值，通过与key来比较是否相等，相等则直接返回，若不相等，则先从index之后的数据进行比较，没找到，则再找之前的数据。可以看出这样是支持存在多个key的hash值相同的情况，那再看看支不支持多个key为null的情况呢？</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kt">int</span> <span class="nf">indexOfNull</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>   <span class="kd">final</span> <span class="kt">int</span> <span class="n">N</span> <span class="o">=</span> <span class="n">mSize</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// Important fast case: if nothing is in here, nothing to look for.</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">N</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="o">~</span><span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="kt">int</span> <span class="n">index</span> <span class="o">=</span> <span class="n">ContainerHelpers</span><span class="o">.</span><span class="na">binarySearch</span><span class="o">(</span><span class="n">mHashes</span><span class="o">,</span> <span class="n">N</span><span class="o">,</span> <span class="mi">0</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// If the hash code wasn&#39;t found, then we have no entry for this key.</span>
+</span><span class='line'>   <span class="err">！</span><span class="k">if</span> <span class="o">(</span><span class="n">index</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">index</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// If the key at the returned index matches, that&#39;s what we want.</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="kc">null</span> <span class="o">==</span> <span class="n">mArray</span><span class="o">[</span><span class="n">index</span><span class="o">&lt;&lt;</span><span class="mi">1</span><span class="o">])</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">index</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// Search for a matching key after the index.</span>
+</span><span class='line'>   <span class="kt">int</span> <span class="n">end</span><span class="o">;</span>
+</span><span class='line'>   <span class="k">for</span> <span class="o">(</span><span class="n">end</span> <span class="o">=</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;</span> <span class="n">end</span> <span class="o">&lt;</span> <span class="n">N</span> <span class="o">&amp;&amp;</span> <span class="n">mHashes</span><span class="o">[</span><span class="n">end</span><span class="o">]</span> <span class="o">==</span> <span class="mi">0</span><span class="o">;</span> <span class="n">end</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="kc">null</span> <span class="o">==</span> <span class="n">mArray</span><span class="o">[</span><span class="n">end</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">])</span> <span class="k">return</span> <span class="n">end</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// Search for a matching key before the index.</span>
+</span><span class='line'>   <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">index</span> <span class="o">-</span> <span class="mi">1</span><span class="o">;</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">mHashes</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">==</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span><span class="o">--)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="kc">null</span> <span class="o">==</span> <span class="n">mArray</span><span class="o">[</span><span class="n">i</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="o">])</span> <span class="k">return</span> <span class="n">i</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// Key not found -- return negative value indicating where a</span>
+</span><span class='line'>   <span class="c1">// new entry for this key should go.  We use the end of the</span>
+</span><span class='line'>   <span class="c1">// hash chain to reduce the number of array entries that will</span>
+</span><span class='line'>   <span class="c1">// need to be copied when inserting.</span>
+</span><span class='line'>   <span class="k">return</span> <span class="o">~</span><span class="n">end</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>从上可以看出当key为null的时候，采取获取的方法跟key不为null获取是很相似的了，都要进行整个数组的遍历，不过这里对应的hash都是为0。但key为null只能在数组中存在一个的，因为在数据的put操作的时候，会对key进行检查，这样保证了key为null只能存在一个。</p>
+
+<h3>5.二分查找</h3>
+
+<p>这里，回顾一下，上面代码中一直会用到的，经典的二分查找的算法：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// This is Arrays.binarySearch(), but doesn&#39;t do any argument validation.</span>
+</span><span class='line'><span class="kd">static</span> <span class="kt">int</span> <span class="nf">binarySearch</span><span class="o">(</span><span class="kt">int</span><span class="o">[]</span> <span class="n">array</span><span class="o">,</span> <span class="kt">int</span> <span class="n">size</span><span class="o">,</span> <span class="kt">int</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="kt">int</span> <span class="n">lo</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>   <span class="kt">int</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="k">while</span> <span class="o">(</span><span class="n">lo</span> <span class="o">&lt;=</span> <span class="n">hi</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">mid</span> <span class="o">=</span> <span class="o">(</span><span class="n">lo</span> <span class="o">+</span> <span class="n">hi</span><span class="o">)</span> <span class="o">&gt;&gt;&gt;</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">midVal</span> <span class="o">=</span> <span class="n">array</span><span class="o">[</span><span class="n">mid</span><span class="o">];</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">midVal</span> <span class="o">&lt;</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>         <span class="n">lo</span> <span class="o">=</span> <span class="n">mid</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">midVal</span> <span class="o">&gt;</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>         <span class="n">hi</span> <span class="o">=</span> <span class="n">mid</span> <span class="o">-</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>         <span class="k">return</span> <span class="n">mid</span><span class="o">;</span>  <span class="c1">// value found</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>   <span class="k">return</span> <span class="o">~</span><span class="n">lo</span><span class="o">;</span>  <span class="c1">// value not present</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码中，采用右移操作来进行除2的操作，而通过三个大于号，则表示无符号操作。</p>
+
+<h2>缓存的实现</h2>
+
+<p>讲到这里，就基本可以结束了，而源码中看到了两个神奇的数组，他俩主要的目的是对固定的数组来进行缓存，官方给的说法是避免内存抖动，毕竟这里是纯数组来实现的，而当数组容量不够的时候，就需要建立一个新的数组，这样旧的数组不就浪费了，所以这里的缓存还是灰常必要的。接下来看看他俩是怎样玩的，不感兴趣的可以略过这里了。先看一下数据结构的实现：</p>
+
+<h3>1.数据结构</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * The minimum amount by which the capacity of a ArrayMap will increase.</span>
+</span><span class='line'><span class="cm"> * This is tuned to be relatively space-efficient.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">BASE_SIZE</span> <span class="o">=</span> <span class="mi">4</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Maximum number of entries to have in array caches.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">CACHE_SIZE</span> <span class="o">=</span> <span class="mi">10</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Caches of small array objects to avoid spamming garbage.  The cache</span>
+</span><span class='line'><span class="cm"> * Object[] variable is a pointer to a linked list of array objects.</span>
+</span><span class='line'><span class="cm"> * The first entry in the array is a pointer to the next array in the</span>
+</span><span class='line'><span class="cm"> * list; the second entry is a pointer to the int[] hash code array for it.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">static</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">mBaseCache</span><span class="o">;</span>
+</span><span class='line'><span class="kd">static</span> <span class="kt">int</span> <span class="n">mBaseCacheSize</span><span class="o">;</span>
+</span><span class='line'><span class="kd">static</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">mTwiceBaseCache</span><span class="o">;</span>
+</span><span class='line'><span class="kd">static</span> <span class="kt">int</span> <span class="n">mTwiceBaseCacheSize</span><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码中有两个静态的Object数组，这两个静态数组采用链表的方式来缓存所有的数组。即Object数组会用来指向array数组，而这个array的第一个值为指针，指向下一个array，而第二个值是对应的hash数组，其他的值则为空。另外，缓存数组即baseCache和twiceBaseCache，它俩大小容量的限制：最小值为4，最大值为10，而BaseCache数组主要存储的是容量为4的数组，twiceBaseCache主要存储容量为8的数组。如图：</p>
+
+<p><img src="http://alighters.github.io/imgs/SimpleArrayMap%E7%BC%93%E5%AD%98%E7%BB%93%E6%9E%84%E5%9B%BE.png" alt="SimpleArrayMap缓存图" /></p>
+
+<h3>2.缓存数据添加</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">freeArrays</span><span class="o">(</span><span class="kd">final</span> <span class="kt">int</span><span class="o">[]</span> <span class="n">hashes</span><span class="o">,</span> <span class="kd">final</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">array</span><span class="o">,</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">size</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">hashes</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="o">(</span><span class="n">BASE_SIZE</span><span class="o">*</span><span class="mi">2</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>      <span class="kd">synchronized</span> <span class="o">(</span><span class="n">ArrayMap</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>         <span class="k">if</span> <span class="o">(</span><span class="n">mTwiceBaseCacheSize</span> <span class="o">&lt;</span> <span class="n">CACHE_SIZE</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">array</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">=</span> <span class="n">mTwiceBaseCache</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">array</span><span class="o">[</span><span class="mi">1</span><span class="o">]</span> <span class="o">=</span> <span class="n">hashes</span><span class="o">;</span>
+</span><span class='line'>            <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=(</span><span class="n">size</span><span class="o">&lt;&lt;</span><span class="mi">1</span><span class="o">)-</span><span class="mi">1</span><span class="o">;</span> <span class="n">i</span><span class="o">&gt;=</span><span class="mi">2</span><span class="o">;</span> <span class="n">i</span><span class="o">--)</span> <span class="o">{</span>
+</span><span class='line'>               <span class="n">array</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>            <span class="n">mTwiceBaseCache</span> <span class="o">=</span> <span class="n">array</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">mTwiceBaseCacheSize</span><span class="o">++;</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">DEBUG</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;Storing 2x cache &quot;</span> <span class="o">+</span> <span class="n">array</span>
+</span><span class='line'>                  <span class="o">+</span> <span class="s">&quot; now have &quot;</span> <span class="o">+</span> <span class="n">mTwiceBaseCacheSize</span> <span class="o">+</span> <span class="s">&quot; entries&quot;</span><span class="o">);</span>
+</span><span class='line'>         <span class="o">}</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>   <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">hashes</span><span class="o">.</span><span class="na">length</span> <span class="o">==</span> <span class="n">BASE_SIZE</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="kd">synchronized</span> <span class="o">(</span><span class="n">ArrayMap</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>         <span class="k">if</span> <span class="o">(</span><span class="n">mBaseCacheSize</span> <span class="o">&lt;</span> <span class="n">CACHE_SIZE</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">array</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">=</span> <span class="n">mBaseCache</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">array</span><span class="o">[</span><span class="mi">1</span><span class="o">]</span> <span class="o">=</span> <span class="n">hashes</span><span class="o">;</span>
+</span><span class='line'>            <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=(</span><span class="n">size</span><span class="o">&lt;&lt;</span><span class="mi">1</span><span class="o">)-</span><span class="mi">1</span><span class="o">;</span> <span class="n">i</span><span class="o">&gt;=</span><span class="mi">2</span><span class="o">;</span> <span class="n">i</span><span class="o">--)</span> <span class="o">{</span>
+</span><span class='line'>               <span class="n">array</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>            <span class="n">mBaseCache</span> <span class="o">=</span> <span class="n">array</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">mBaseCacheSize</span><span class="o">++;</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">DEBUG</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;Storing 1x cache &quot;</span> <span class="o">+</span> <span class="n">array</span>
+</span><span class='line'>                  <span class="o">+</span> <span class="s">&quot; now have &quot;</span> <span class="o">+</span> <span class="n">mBaseCacheSize</span> <span class="o">+</span> <span class="s">&quot; entries&quot;</span><span class="o">);</span>
+</span><span class='line'>         <span class="o">}</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这个方法主要调用的地方在于ArrayMap进行容量改变时，代码中，会对当前数组的array进行清空操作，但第一个值指向之前cache数组，第二个值指向hash数组。</p>
+
+<h3>3.缓存数组使用</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">allocArrays</span><span class="o">(</span><span class="kd">final</span> <span class="kt">int</span> <span class="n">size</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">size</span> <span class="o">==</span> <span class="o">(</span><span class="n">BASE_SIZE</span><span class="o">*</span><span class="mi">2</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>      <span class="kd">synchronized</span> <span class="o">(</span><span class="n">ArrayMap</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>         <span class="k">if</span> <span class="o">(</span><span class="n">mTwiceBaseCache</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kd">final</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">array</span> <span class="o">=</span> <span class="n">mTwiceBaseCache</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">mArray</span> <span class="o">=</span> <span class="n">array</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">mTwiceBaseCache</span> <span class="o">=</span> <span class="o">(</span><span class="n">Object</span><span class="o">[])</span><span class="n">array</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span>
+</span><span class='line'>            <span class="n">mHashes</span> <span class="o">=</span> <span class="o">(</span><span class="kt">int</span><span class="o">[])</span><span class="n">array</span><span class="o">[</span><span class="mi">1</span><span class="o">];</span>
+</span><span class='line'>            <span class="n">array</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">=</span> <span class="n">array</span><span class="o">[</span><span class="mi">1</span><span class="o">]</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">mTwiceBaseCacheSize</span><span class="o">--;</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">DEBUG</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;Retrieving 2x cache &quot;</span> <span class="o">+</span> <span class="n">mHashes</span>
+</span><span class='line'>                  <span class="o">+</span> <span class="s">&quot; now have &quot;</span> <span class="o">+</span> <span class="n">mTwiceBaseCacheSize</span> <span class="o">+</span> <span class="s">&quot; entries&quot;</span><span class="o">);</span>
+</span><span class='line'>            <span class="k">return</span><span class="o">;</span>
+</span><span class='line'>         <span class="o">}</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>   <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">size</span> <span class="o">==</span> <span class="n">BASE_SIZE</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="kd">synchronized</span> <span class="o">(</span><span class="n">ArrayMap</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>         <span class="k">if</span> <span class="o">(</span><span class="n">mBaseCache</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kd">final</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">array</span> <span class="o">=</span> <span class="n">mBaseCache</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">mArray</span> <span class="o">=</span> <span class="n">array</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">mBaseCache</span> <span class="o">=</span> <span class="o">(</span><span class="n">Object</span><span class="o">[])</span><span class="n">array</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span>
+</span><span class='line'>            <span class="n">mHashes</span> <span class="o">=</span> <span class="o">(</span><span class="kt">int</span><span class="o">[])</span><span class="n">array</span><span class="o">[</span><span class="mi">1</span><span class="o">];</span>
+</span><span class='line'>            <span class="n">array</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span> <span class="o">=</span> <span class="n">array</span><span class="o">[</span><span class="mi">1</span><span class="o">]</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">mBaseCacheSize</span><span class="o">--;</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">DEBUG</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">TAG</span><span class="o">,</span> <span class="s">&quot;Retrieving 1x cache &quot;</span> <span class="o">+</span> <span class="n">mHashes</span>
+</span><span class='line'>                  <span class="o">+</span> <span class="s">&quot; now have &quot;</span> <span class="o">+</span> <span class="n">mBaseCacheSize</span> <span class="o">+</span> <span class="s">&quot; entries&quot;</span><span class="o">);</span>
+</span><span class='line'>            <span class="k">return</span><span class="o">;</span>
+</span><span class='line'>         <span class="o">}</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="n">mHashes</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="o">[</span><span class="n">size</span><span class="o">];</span>
+</span><span class='line'>   <span class="n">mArray</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Object</span><span class="o">[</span><span class="n">size</span><span class="o">&lt;&lt;</span><span class="mi">1</span><span class="o">];</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这个时候，当size跟缓存的数组大小相同，即要么等于4，要么等于8，即可从缓存中拿取数组来用。这里主要的操作就是baseCache指针的移动，指向array[0]指向的指针，hash数组即为array[0]，而当前的这个array咱们就可以使用了。</p>
+
+<h2>总结</h2>
+
+<ul>
+<li>SimpleArrayMap是可以替代ArrayMap来使用的，区别只是其内部采用单纯的数组来实现，而ArrayMap中采用了EntrySet跟KeySet的结构，这样方便使用<code>Iterator</code>来数据的遍历获取。</li>
+<li>ArrayMap适用于少量的数据，因为存取的复杂度，对数量过大的就不太合适。这个量笔者建议破百就放弃ArrayMap的使用吧。</li>
+<li>ArrayMap支持key为null，但数组只能有一个key为null的存在。另外，允许多个key的hash值相同，不过尽量避免吧，不然二分查找获取不到，又会进行遍历查找；而key都必须是唯一，不能重复的。</li>
+<li>主要目的是避免占用大量的内存切无法得到地充分利用。</li>
+<li>对容量为4和容量为8的数组，进行缓存，来防止内存抖动的发生。</li>
+</ul>
+
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/">/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2016-04-29T14:01:00+08:00'><span class='date'>2016-04-29</span> <span class='time'>2:01 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/" title="Previous Post: Octopress搭建博客之路1">&laquo; Octopress搭建博客之路1</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/05/02/rxjava-plus-retrofitshi-xian-wang-luo-dai-li/" title="Next Post: Rxjava+Retrofit 实现全局过期 token 自动刷新">Rxjava+Retrofit 实现全局过期 token 自动刷新 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

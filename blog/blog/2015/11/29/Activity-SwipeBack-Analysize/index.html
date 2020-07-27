@@ -1,0 +1,620 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Activity之SwipeBack原理解析 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="Activity之SwipeBack原理解析 2015-11-29 11:09 pm | Comments 最近在项目中遇到了使用SwipeBackLayout来模拟ios中右滑退出当前界面的效果（万恶的模仿IOS），颇感神奇，然后大致研究了下其代码实现的原理，接下来就一些主要的原理做一些讲解 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2015/11/29/Activity-SwipeBack-Analysize/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Activity之SwipeBack原理解析</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-11-29T23:09:33+00:00'><span class='date'>2015-11-29</span> <span class='time'>11:09 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>最近在项目中遇到了使用<a href="https://github.com/ikew0ng/SwipeBackLayout">SwipeBackLayout</a>来模拟ios中右滑退出当前界面的效果（<em>万恶的模仿IOS</em>），颇感神奇，然后大致研究了下其代码实现的原理，接下来就一些主要的原理做一些讲解。</p>
+
+<!-- more -->
+
+
+<h3>原理概括：</h3>
+
+<p>通过使用SwipeBackLayout作为咱们设置contentView的Parent，之后右滑的操作，则会由咱们的最外层容器SwipeBackLayout来处理，右滑中移动的距离，则将SwipeBackLayout的childView向右移动相应的距离。移动之后左边的间隙，则在draw方法来绘制置透明色，来显示下层的界面（必须在主题中指定windowIsTranslucent为true，这样咱们才可以看到下层的activity）。</p>
+
+<h3>原理解析：</h3>
+
+<p>为了验证咱们的原理是否准确，咱们通过一下几个方面进行验证：
++  <strong>SwipeBackLayout是如何设置最外层container的呢？</strong>
+在SwipeBackActivity中的onPostCreate的回调中，可以发现通过SwipeBackActivityHelper的onPostCreate来执行SwipeBackLayout的attachToActivity方法。在此方法中，通过拿到decorView的子view，使用狸猫换太子，把咱们SwipeBackLayout作为根view。具体的代码如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">attachToActivity</span><span class="o">(</span><span class="n">Activity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">mActivity</span> <span class="o">=</span> <span class="n">activity</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">TypedArray</span> <span class="n">a</span> <span class="o">=</span> <span class="n">activity</span><span class="o">.</span><span class="na">getTheme</span><span class="o">().</span><span class="na">obtainStyledAttributes</span><span class="o">(</span><span class="k">new</span> <span class="kt">int</span><span class="o">[]{</span>
+</span><span class='line'>            <span class="n">android</span><span class="o">.</span><span class="na">R</span><span class="o">.</span><span class="na">attr</span><span class="o">.</span><span class="na">windowBackground</span>
+</span><span class='line'>    <span class="o">});</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">background</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="na">getResourceId</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">0</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">a</span><span class="o">.</span><span class="na">recycle</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">ViewGroup</span> <span class="n">decor</span> <span class="o">=</span> <span class="o">(</span><span class="n">ViewGroup</span><span class="o">)</span> <span class="n">activity</span><span class="o">.</span><span class="na">getWindow</span><span class="o">().</span><span class="na">getDecorView</span><span class="o">();</span>
+</span><span class='line'>    <span class="n">ViewGroup</span> <span class="n">decorChild</span> <span class="o">=</span> <span class="o">(</span><span class="n">ViewGroup</span><span class="o">)</span> <span class="n">decor</span><span class="o">.</span><span class="na">getChildAt</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">decorChild</span><span class="o">.</span><span class="na">setBackgroundResource</span><span class="o">(</span><span class="n">background</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">decor</span><span class="o">.</span><span class="na">removeView</span><span class="o">(</span><span class="n">decorChild</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">addView</span><span class="o">(</span><span class="n">decorChild</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">setContentView</span><span class="o">(</span><span class="n">decorChild</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">decor</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>SwipeBackLayout的右滑操作是否是进行自己的右移操作实现？</strong>
+像这种滑动的过程中，移动的view的效果，肯定都是在OnTouchEvent中的move方法，判断坐标的改变值，之后进行view的操作来实现的。接下来，咱们找一下代码进行验证一下，通过代码查找，发现它将onTouchEvent的操作逻辑放置在
+ViewDragHelper中进行：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'>   <span class="k">case</span> <span class="n">MotionEvent</span><span class="o">.</span><span class="na">ACTION_MOVE</span><span class="o">:</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">mDragState</span> <span class="o">==</span> <span class="n">STATE_DRAGGING</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="kd">final</span> <span class="kt">int</span> <span class="n">index</span> <span class="o">=</span> <span class="n">MotionEventCompat</span><span class="o">.</span><span class="na">findPointerIndex</span><span class="o">(</span><span class="n">ev</span><span class="o">,</span> <span class="n">mActivePointerId</span><span class="o">);</span>
+</span><span class='line'>          <span class="kd">final</span> <span class="kt">float</span> <span class="n">x</span> <span class="o">=</span> <span class="n">MotionEventCompat</span><span class="o">.</span><span class="na">getX</span><span class="o">(</span><span class="n">ev</span><span class="o">,</span> <span class="n">index</span><span class="o">);</span>
+</span><span class='line'>          <span class="kd">final</span> <span class="kt">float</span> <span class="n">y</span> <span class="o">=</span> <span class="n">MotionEventCompat</span><span class="o">.</span><span class="na">getY</span><span class="o">(</span><span class="n">ev</span><span class="o">,</span> <span class="n">index</span><span class="o">);</span>
+</span><span class='line'>          <span class="kd">final</span> <span class="kt">int</span> <span class="n">idx</span> <span class="o">=</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="o">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">mLastMotionX</span><span class="o">[</span><span class="n">mActivePointerId</span><span class="o">]);</span>
+</span><span class='line'>          <span class="kd">final</span> <span class="kt">int</span> <span class="n">idy</span> <span class="o">=</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="o">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">mLastMotionY</span><span class="o">[</span><span class="n">mActivePointerId</span><span class="o">]);</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="n">dragTo</span><span class="o">(</span><span class="n">mCapturedView</span><span class="o">.</span><span class="na">getLeft</span><span class="o">()</span> <span class="o">+</span> <span class="n">idx</span><span class="o">,</span> <span class="n">mCapturedView</span><span class="o">.</span><span class="na">getTop</span><span class="o">()</span> <span class="o">+</span> <span class="n">idy</span><span class="o">,</span> <span class="n">idx</span><span class="o">,</span> <span class="n">idy</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="n">saveLastMotion</span><span class="o">(</span><span class="n">ev</span><span class="o">);</span>
+</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>          <span class="c1">// Check to see if any pointer is now over a draggable view.</span>
+</span><span class='line'>          <span class="kd">final</span> <span class="kt">int</span> <span class="n">pointerCount</span> <span class="o">=</span> <span class="n">MotionEventCompat</span><span class="o">.</span><span class="na">getPointerCount</span><span class="o">(</span><span class="n">ev</span><span class="o">);</span>
+</span><span class='line'>          <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">pointerCount</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>              <span class="kd">final</span> <span class="kt">int</span> <span class="n">pointerId</span> <span class="o">=</span> <span class="n">MotionEventCompat</span><span class="o">.</span><span class="na">getPointerId</span><span class="o">(</span><span class="n">ev</span><span class="o">,</span> <span class="n">i</span><span class="o">);</span>
+</span><span class='line'>              <span class="kd">final</span> <span class="kt">float</span> <span class="n">x</span> <span class="o">=</span> <span class="n">MotionEventCompat</span><span class="o">.</span><span class="na">getX</span><span class="o">(</span><span class="n">ev</span><span class="o">,</span> <span class="n">i</span><span class="o">);</span>
+</span><span class='line'>              <span class="kd">final</span> <span class="kt">float</span> <span class="n">y</span> <span class="o">=</span> <span class="n">MotionEventCompat</span><span class="o">.</span><span class="na">getY</span><span class="o">(</span><span class="n">ev</span><span class="o">,</span> <span class="n">i</span><span class="o">);</span>
+</span><span class='line'>              <span class="kd">final</span> <span class="kt">float</span> <span class="n">dx</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">mInitialMotionX</span><span class="o">[</span><span class="n">pointerId</span><span class="o">];</span>
+</span><span class='line'>              <span class="kd">final</span> <span class="kt">float</span> <span class="n">dy</span> <span class="o">=</span> <span class="n">y</span> <span class="o">-</span> <span class="n">mInitialMotionY</span><span class="o">[</span><span class="n">pointerId</span><span class="o">];</span>
+</span><span class='line'>
+</span><span class='line'>              <span class="n">reportNewEdgeDrags</span><span class="o">(</span><span class="n">dx</span><span class="o">,</span> <span class="n">dy</span><span class="o">,</span> <span class="n">pointerId</span><span class="o">);</span>
+</span><span class='line'>              <span class="k">if</span> <span class="o">(</span><span class="n">mDragState</span> <span class="o">==</span> <span class="n">STATE_DRAGGING</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                  <span class="c1">// Callback might have started an edge drag.</span>
+</span><span class='line'>                  <span class="k">break</span><span class="o">;</span>
+</span><span class='line'>              <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>              <span class="kd">final</span> <span class="n">View</span> <span class="n">toCapture</span> <span class="o">=</span> <span class="n">findTopChildUnder</span><span class="o">((</span><span class="kt">int</span><span class="o">)</span> <span class="n">x</span><span class="o">,</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="n">y</span><span class="o">);</span>
+</span><span class='line'>              <span class="k">if</span> <span class="o">(</span><span class="n">checkTouchSlop</span><span class="o">(</span><span class="n">toCapture</span><span class="o">,</span> <span class="n">dx</span><span class="o">,</span> <span class="n">dy</span><span class="o">)</span>
+</span><span class='line'>                      <span class="o">&amp;&amp;</span> <span class="n">tryCaptureViewForDrag</span><span class="o">(</span><span class="n">toCapture</span><span class="o">,</span> <span class="n">pointerId</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>                  <span class="k">break</span><span class="o">;</span>
+</span><span class='line'>              <span class="o">}</span>
+</span><span class='line'>          <span class="o">}</span>
+</span><span class='line'>          <span class="n">saveLastMotion</span><span class="o">(</span><span class="n">ev</span><span class="o">);</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>      <span class="k">break</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在以上的代码中，发现获取了移动的距离idx和idy，之后调用了dragTo的方法。跳转到dragTo方法：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">dragTo</span><span class="o">(</span><span class="kt">int</span> <span class="n">left</span><span class="o">,</span> <span class="kt">int</span> <span class="n">top</span><span class="o">,</span> <span class="kt">int</span> <span class="n">dx</span><span class="o">,</span> <span class="kt">int</span> <span class="n">dy</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">clampedX</span> <span class="o">=</span> <span class="n">left</span><span class="o">;</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">clampedY</span> <span class="o">=</span> <span class="n">top</span><span class="o">;</span>
+</span><span class='line'>    <span class="kd">final</span> <span class="kt">int</span> <span class="n">oldLeft</span> <span class="o">=</span> <span class="n">mCapturedView</span><span class="o">.</span><span class="na">getLeft</span><span class="o">();</span>
+</span><span class='line'>    <span class="kd">final</span> <span class="kt">int</span> <span class="n">oldTop</span> <span class="o">=</span> <span class="n">mCapturedView</span><span class="o">.</span><span class="na">getTop</span><span class="o">();</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">dx</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">clampedX</span> <span class="o">=</span> <span class="n">mCallback</span><span class="o">.</span><span class="na">clampViewPositionHorizontal</span><span class="o">(</span><span class="n">mCapturedView</span><span class="o">,</span> <span class="n">left</span><span class="o">,</span> <span class="n">dx</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">mCapturedView</span><span class="o">.</span><span class="na">offsetLeftAndRight</span><span class="o">(</span><span class="n">clampedX</span> <span class="o">-</span> <span class="n">oldLeft</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">dy</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">clampedY</span> <span class="o">=</span> <span class="n">mCallback</span><span class="o">.</span><span class="na">clampViewPositionVertical</span><span class="o">(</span><span class="n">mCapturedView</span><span class="o">,</span> <span class="n">top</span><span class="o">,</span> <span class="n">dy</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">mCapturedView</span><span class="o">.</span><span class="na">offsetTopAndBottom</span><span class="o">(</span><span class="n">clampedY</span> <span class="o">-</span> <span class="n">oldTop</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">dx</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">dy</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">final</span> <span class="kt">int</span> <span class="n">clampedDx</span> <span class="o">=</span> <span class="n">clampedX</span> <span class="o">-</span> <span class="n">oldLeft</span><span class="o">;</span>
+</span><span class='line'>        <span class="kd">final</span> <span class="kt">int</span> <span class="n">clampedDy</span> <span class="o">=</span> <span class="n">clampedY</span> <span class="o">-</span> <span class="n">oldTop</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">mCallback</span>
+</span><span class='line'>                <span class="o">.</span><span class="na">onViewPositionChanged</span><span class="o">(</span><span class="n">mCapturedView</span><span class="o">,</span> <span class="n">clampedX</span><span class="o">,</span> <span class="n">clampedY</span><span class="o">,</span> <span class="n">clampedDx</span><span class="o">,</span> <span class="n">clampedDy</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>可以看出它是通过调用了offsetLeftAndRight跟offsetTopAndBottom来改变相应view的位置。</p>
+
+<ul>
+<li><strong>在SwipeBackLayout右滑的过程中，左边的透明部分是如何处理的？</strong>
+这部分的逻辑，在SwipeBackLayout的drawChild的方法中，可以看出一些端倪。通过childView的移动之后的具体，在移动之后的间隙出，绘制透明色跟过度的图片。看代码：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span>
+</span><span class='line'><span class="kd">protected</span> <span class="kt">boolean</span> <span class="nf">drawChild</span><span class="o">(</span><span class="n">Canvas</span> <span class="n">canvas</span><span class="o">,</span> <span class="n">View</span> <span class="n">child</span><span class="o">,</span> <span class="kt">long</span> <span class="n">drawingTime</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">drawContent</span> <span class="o">=</span> <span class="n">child</span> <span class="o">==</span> <span class="n">mContentView</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">boolean</span> <span class="n">ret</span> <span class="o">=</span> <span class="kd">super</span><span class="o">.</span><span class="na">drawChild</span><span class="o">(</span><span class="n">canvas</span><span class="o">,</span> <span class="n">child</span><span class="o">,</span> <span class="n">drawingTime</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">mScrimOpacity</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">drawContent</span>
+</span><span class='line'>            <span class="o">&amp;&amp;</span> <span class="n">mDragHelper</span><span class="o">.</span><span class="na">getViewDragState</span><span class="o">()</span> <span class="o">!=</span> <span class="n">ViewDragHelper</span><span class="o">.</span><span class="na">STATE_IDLE</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">drawShadow</span><span class="o">(</span><span class="n">canvas</span><span class="o">,</span> <span class="n">child</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">drawScrim</span><span class="o">(</span><span class="n">canvas</span><span class="o">,</span> <span class="n">child</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">ret</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">drawScrim</span><span class="o">(</span><span class="n">Canvas</span> <span class="n">canvas</span><span class="o">,</span> <span class="n">View</span> <span class="n">child</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">final</span> <span class="kt">int</span> <span class="n">baseAlpha</span> <span class="o">=</span> <span class="o">(</span><span class="n">mScrimColor</span> <span class="o">&amp;</span> <span class="mh">0xff000000</span><span class="o">)</span> <span class="o">&gt;&gt;&gt;</span> <span class="mi">24</span><span class="o">;</span>
+</span><span class='line'>    <span class="kd">final</span> <span class="kt">int</span> <span class="n">alpha</span> <span class="o">=</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="o">(</span><span class="n">baseAlpha</span> <span class="o">*</span> <span class="n">mScrimOpacity</span><span class="o">);</span>
+</span><span class='line'>    <span class="kd">final</span> <span class="kt">int</span> <span class="n">color</span> <span class="o">=</span> <span class="n">alpha</span> <span class="o">&lt;&lt;</span> <span class="mi">24</span> <span class="o">|</span> <span class="o">(</span><span class="n">mScrimColor</span> <span class="o">&amp;</span> <span class="mh">0xffffff</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="o">((</span><span class="n">mTrackingEdge</span> <span class="o">&amp;</span> <span class="n">EDGE_LEFT</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">canvas</span><span class="o">.</span><span class="na">clipRect</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">child</span><span class="o">.</span><span class="na">getLeft</span><span class="o">(),</span> <span class="n">getHeight</span><span class="o">());</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">((</span><span class="n">mTrackingEdge</span> <span class="o">&amp;</span> <span class="n">EDGE_RIGHT</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">canvas</span><span class="o">.</span><span class="na">clipRect</span><span class="o">(</span><span class="n">child</span><span class="o">.</span><span class="na">getRight</span><span class="o">(),</span> <span class="mi">0</span><span class="o">,</span> <span class="n">getRight</span><span class="o">(),</span> <span class="n">getHeight</span><span class="o">());</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">((</span><span class="n">mTrackingEdge</span> <span class="o">&amp;</span> <span class="n">EDGE_BOTTOM</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">canvas</span><span class="o">.</span><span class="na">clipRect</span><span class="o">(</span><span class="n">child</span><span class="o">.</span><span class="na">getLeft</span><span class="o">(),</span> <span class="n">child</span><span class="o">.</span><span class="na">getBottom</span><span class="o">(),</span> <span class="n">getRight</span><span class="o">(),</span> <span class="n">getHeight</span><span class="o">());</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    <span class="n">canvas</span><span class="o">.</span><span class="na">drawColor</span><span class="o">(</span><span class="n">color</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">drawShadow</span><span class="o">(</span><span class="n">Canvas</span> <span class="n">canvas</span><span class="o">,</span> <span class="n">View</span> <span class="n">child</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">final</span> <span class="n">Rect</span> <span class="n">childRect</span> <span class="o">=</span> <span class="n">mTmpRect</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">child</span><span class="o">.</span><span class="na">getHitRect</span><span class="o">(</span><span class="n">childRect</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="o">((</span><span class="n">mEdgeFlag</span> <span class="o">&amp;</span> <span class="n">EDGE_LEFT</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">mShadowLeft</span><span class="o">.</span><span class="na">setBounds</span><span class="o">(</span><span class="n">childRect</span><span class="o">.</span><span class="na">left</span> <span class="o">-</span> <span class="n">mShadowLeft</span><span class="o">.</span><span class="na">getIntrinsicWidth</span><span class="o">(),</span> <span class="n">childRect</span><span class="o">.</span><span class="na">top</span><span class="o">,</span>
+</span><span class='line'>                <span class="n">childRect</span><span class="o">.</span><span class="na">left</span><span class="o">,</span> <span class="n">childRect</span><span class="o">.</span><span class="na">bottom</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">mShadowLeft</span><span class="o">.</span><span class="na">setAlpha</span><span class="o">((</span><span class="kt">int</span><span class="o">)</span> <span class="o">(</span><span class="n">mScrimOpacity</span> <span class="o">*</span> <span class="n">FULL_ALPHA</span><span class="o">));</span>
+</span><span class='line'>        <span class="n">mShadowLeft</span><span class="o">.</span><span class="na">draw</span><span class="o">(</span><span class="n">canvas</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="o">((</span><span class="n">mEdgeFlag</span> <span class="o">&amp;</span> <span class="n">EDGE_RIGHT</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">mShadowRight</span><span class="o">.</span><span class="na">setBounds</span><span class="o">(</span><span class="n">childRect</span><span class="o">.</span><span class="na">right</span><span class="o">,</span> <span class="n">childRect</span><span class="o">.</span><span class="na">top</span><span class="o">,</span>
+</span><span class='line'>                <span class="n">childRect</span><span class="o">.</span><span class="na">right</span> <span class="o">+</span> <span class="n">mShadowRight</span><span class="o">.</span><span class="na">getIntrinsicWidth</span><span class="o">(),</span> <span class="n">childRect</span><span class="o">.</span><span class="na">bottom</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">mShadowRight</span><span class="o">.</span><span class="na">setAlpha</span><span class="o">((</span><span class="kt">int</span><span class="o">)</span> <span class="o">(</span><span class="n">mScrimOpacity</span> <span class="o">*</span> <span class="n">FULL_ALPHA</span><span class="o">));</span>
+</span><span class='line'>        <span class="n">mShadowRight</span><span class="o">.</span><span class="na">draw</span><span class="o">(</span><span class="n">canvas</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="o">((</span><span class="n">mEdgeFlag</span> <span class="o">&amp;</span> <span class="n">EDGE_BOTTOM</span><span class="o">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">mShadowBottom</span><span class="o">.</span><span class="na">setBounds</span><span class="o">(</span><span class="n">childRect</span><span class="o">.</span><span class="na">left</span><span class="o">,</span> <span class="n">childRect</span><span class="o">.</span><span class="na">bottom</span><span class="o">,</span> <span class="n">childRect</span><span class="o">.</span><span class="na">right</span><span class="o">,</span>
+</span><span class='line'>                <span class="n">childRect</span><span class="o">.</span><span class="na">bottom</span> <span class="o">+</span> <span class="n">mShadowBottom</span><span class="o">.</span><span class="na">getIntrinsicHeight</span><span class="o">());</span>
+</span><span class='line'>        <span class="n">mShadowBottom</span><span class="o">.</span><span class="na">setAlpha</span><span class="o">((</span><span class="kt">int</span><span class="o">)</span> <span class="o">(</span><span class="n">mScrimOpacity</span> <span class="o">*</span> <span class="n">FULL_ALPHA</span><span class="o">));</span>
+</span><span class='line'>        <span class="n">mShadowBottom</span><span class="o">.</span><span class="na">draw</span><span class="o">(</span><span class="n">canvas</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>可以明确的看出，他正是根据不同的移动方向，来绘制咱们所需要的那块透明的过度区域。在drawScrim绘制底色，在drawShadow中绘制过渡的图片，来达到咱们所需要的效果。</p>
+
+<h3>不足之处：</h3>
+
+<p>我们从代码中可以发现，它是在decorview中给第一个子view来添加一个父view（SwipeBackLayout）来实现view滑动之后，结束当前activity的效果。注意问题来了，decorView的第一个childView是不包含状态栏的，这样在5.0上就会出现一个视觉的bug。界面在右滑的过程中，状态栏是不改变的，在确定滑动过程结束之后，才会执行activity的finish的方法，这样状态栏次啊会消失。因为在5.0上的，嗯，我的大魅族就是5.0的，亲测这个bug，5.0上系统会根据界面的头部，动态来设置状态栏的颜色，（当然代码也是可以设置的），这个视觉的bug就比较明显了。</p>
+
+<h3>Demo实现：</h3>
+
+<p>现在，楼主感觉自己掌握了这个原理，就来验证是否可行，咱们通过简单的demo来实现。<a href="https://github.com/david-wei/SwipeBackPractice">Demo地址</a>，主要的细节点如下：
++ 在主题中设置windowIsTransluceni为true
++ onIntercept跟onTouchEvent事件的重写，进行指定的view的移动操作。</p>
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2015/11/29/Activity-SwipeBack-Analysize/">/blog/2015/11/29/Activity-SwipeBack-Analysize/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-11-29T23:09:33+00:00'><span class='date'>2015-11-29</span> <span class='time'>11:09 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2015/11/29/Activity-SwipeBack-Analysize/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2015/11/29/Activity-SwipeBack-Analysize/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/10/26/Viewpager-loop-scroll/" title="Previous Post: Viewpager实现循环滚动">&laquo; Viewpager实现循环滚动</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/12/06/RxJava-analyze-one/" title="Next Post: RxJava原理解析一">RxJava原理解析一 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2015/11/29/Activity-SwipeBack-Analysize/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2015/11/29/Activity-SwipeBack-Analysize/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

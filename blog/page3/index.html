@@ -1,0 +1,631 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="遇到了JS的变量声明提升，英文名为Hosting，具体来讲是指JS在对当前作用域中的声明代码，会将其提升至当前作用域的最顶端。本文通过几个示例来详细理解一下： ">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/page3/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/06/05/javascript-variable-hosting/">Javascript变量声明提升</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-06-05T12:40:00+08:00'><span class='date'>2016-06-05</span> <span class='time'>12:40 pm</span></time>
+        
+           | <a href="/blog/2016/06/05/javascript-variable-hosting/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/06/05/javascript-variable-hosting/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>遇到了JS的变量声明提升，英文名为Hosting，具体来讲是指JS在对当前作用域中的声明代码，会将其提升至当前作用域的最顶端。本文通过几个示例来详细理解一下：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/06/05/javascript-variable-hosting/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/06/01/javascript-garden-note/">Javascript Garden 笔记</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-06-01T08:24:00+08:00'><span class='date'>2016-06-01</span> <span class='time'>8:24 am</span></time>
+        
+           | <a href="/blog/2016/06/01/javascript-garden-note/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/06/01/javascript-garden-note/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><blockquote><p>PS : 这是一篇针对javascript garden做的笔记，更多内容请查看原文链接 : <a href="http://bonsaiden.github.io/JavaScript-Garden/zh/">http://bonsaiden.github.io/JavaScript-Garden/zh/</a></p></blockquote>
+
+<h2>对象</h2>
+
+<ol>
+<li>JavaScript 中所有变量都可以当作对象使用，除了null 和 undefined；</li>
+<li>2.toString(); // 出错：SyntaxError，因为解析器试图将2.作为浮点数的一部分来解析，可以使用（2).toString()或者2..toString()或2 .toString();</li>
+<li>使用{}可以创建一个新的对象 ，新的对象继承自Object.prototype;</li>
+<li>访问对象的属性，可以通过 “.”或者“[]”操作符，删除属性则通过delete操作符；</li>
+</ol>
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/06/01/javascript-garden-note/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/05/30/android-studio-keyshort/">Android Studio常用快捷键合集</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-05-30T19:04:00+08:00'><span class='date'>2016-05-30</span> <span class='time'>7:04 pm</span></time>
+        
+           | <a href="/blog/2016/05/30/android-studio-keyshort/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/05/30/android-studio-keyshort/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在使用AS的过程中，之前使用的是Eclipse的快捷键的风格，现在切换为Mac系统的AS快捷键风格，一时不适应，下面记录一下Mac风格的快捷键；</p>
+
+<blockquote><p>PS: 注意Mac上的delete键是执行删除前一个字符（即是backspace的效果），而要达到删除后一个字符（即是delete的效果），则要执行按键 fn + delete。需要注意这里的区别</p></blockquote>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/05/30/android-studio-keyshort/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/05/24/eventbus-3-dot-0-indepth-knowledge/">EventBus后续深入知识点整理</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-05-24T21:29:00+08:00'><span class='date'>2016-05-24</span> <span class='time'>9:29 pm</span></time>
+        
+           | <a href="/blog/2016/05/24/eventbus-3-dot-0-indepth-knowledge/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/05/24/eventbus-3-dot-0-indepth-knowledge/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>根据上一篇文章<a href="http://alighters.com/blog/2016/05/22/eventbus3-dot-0-analyze/">浅析EventBus 3.0实现思想</a> 对EventBus的概括，本文针对其中一些重要且比较有意思的知识点，做一下如下的汇总整理 ：</p>
+
+<h2>FindState的妙用</h2>
+
+<p>在EventBus中，会根据class信息，来获取<code>SubscriberMethod</code>,这里会在<code>SubscriberMethodFinder</code>中进行处理，提供了两种方式来进行获取：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/05/24/eventbus-3-dot-0-indepth-knowledge/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/05/22/eventbus3-dot-0-analyze/">浅析EventBus 3.0实现思想</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-05-22T08:12:00+08:00'><span class='date'>2016-05-22</span> <span class='time'>8:12 am</span></time>
+        
+           | <a href="/blog/2016/05/22/eventbus3-dot-0-analyze/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/05/22/eventbus3-dot-0-analyze/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近接触了EventBus，也看了一些源码分析的文章。在此就不再细述其代码的实现细节，主要针对其的设计思想做一些记录，也是自己思考的过程。同时本文尽量以较少的代码来将其主要设计思想说的透彻明白，不会针对细节做过多深入。</p>
+
+<h2>基本的事件发布订阅的实现</h2>
+
+<p>一般情况下，事件发布订阅机制都是跟观察者模式紧密相连。事件的发布中心都会维持着一组当前的观察者（也可叫做订阅者），这里称之为事件总线，（观察者的注册/取消则对应着在这组数据中进行添加和删除）。另外被观察者（也可叫发布者）则通过发出事件，事件总线拿到该事件，则在观察者列表中根据事件来查找相应的事件观察者，紧接着执行观察者的行为即可。对应一个简单的事件总线图如下：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/05/22/eventbus3-dot-0-analyze/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/05/10/apt-code-generate/">Android编译期代码生成之apt实践入门</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-05-10T21:07:00+08:00'><span class='date'>2016-05-10</span> <span class='time'>9:07 pm</span></time>
+        
+           | <a href="/blog/2016/05/10/apt-code-generate/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/05/10/apt-code-generate/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>现在 Android 主流库中使用 apt 的越来越多，如Dagger2，ButterKnife，DBflow等。不研究一下其怎么玩的，心里实在是不舒服斯基，所以就有了这篇apt代码简单生成的文章。文章的末尾，会附上一些关于注解的基础知识，有兴趣的童鞋可以再去看看。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/05/10/apt-code-generate/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/05/07/talk-about-overtime/">程序员加班之说-谈效率</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-05-07T12:29:00+08:00'><span class='date'>2016-05-07</span> <span class='time'>12:29 pm</span></time>
+        
+           | <a href="/blog/2016/05/07/talk-about-overtime/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/05/07/talk-about-overtime/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><img src="http://alighters.github.io/imgs/%E5%8A%A0%E7%8F%AD.jpg" alt="加班" /></p>
+
+<p>最近听人谈起程序员的加班问题，忙到那么晚，真有那么多事情要做么？当然每个人遇到的情况不一样，给到的答案也是不一样的，这里针对个人所遇到的情况，谈谈对加班的一些看法。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/05/07/talk-about-overtime/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/05/02/rxjava-plus-retrofitshi-xian-wang-luo-dai-li/">Rxjava+Retrofit 实现全局过期 Token 自动刷新</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-05-02T17:26:00+08:00'><span class='date'>2016-05-02</span> <span class='time'>5:26 pm</span></time>
+        
+           | <a href="/blog/2016/05/02/rxjava-plus-retrofitshi-xian-wang-luo-dai-li/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/05/02/rxjava-plus-retrofitshi-xian-wang-luo-dai-li/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>我们在做客户端的设计实现底层网络架构时候，常常不可避免的一个问题：token的有效验证，若是token过期，则需要先执行refresh token的操作，若是执行refresh token也无效，则需要用户再执行登陆的过程中；而这个refresh token的操作，按理来说，对用户是不可见的。这样的话，我们应该是怎么解决这个问题呢？</p>
+
+<p>本文是采用RxJava + Retrofit来实现网络请求的封装的，则主要讨论这种情况的实现；一般的写法，则主要是在回调中，做一些拦截的判断，这里就不叙述了。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/05/02/rxjava-plus-retrofitshi-xian-wang-luo-dai-li/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/">SimpleArrayMap源码解析</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-04-29T14:01:00+08:00'><span class='date'>2016-04-29</span> <span class='time'>2:01 pm</span></time>
+        
+           | <a href="/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><blockquote><p>本文SimpleArrayMap源码分析是基于<strong>support v4 23.3.0</strong>版本的。
+另外，因ArrayMap涉及的多是算法知识，而主要的思想比较简单，所以本文会主要以代码为主，细讲其每个实现。</p></blockquote>
+
+<h2>为什么要引入ArrayMap？</h2>
+
+<p>  在Android设备上，因为App的内存限制，出现OOM的错误，导致开发者不得不关注一些底层数据结构以及去分析App的内存使用情况。提及数据结构，HashMap是我们最经常使用到的，而我们是否会注意其实现的细节以及有什么优缺点呢？</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/">Octopress搭建博客之路1</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-04-23T22:00:00+08:00'><span class='date'>2016-04-23</span> <span class='time'>10:00 pm</span></time>
+        
+           | <a href="/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近，因之前的博客是通过hexo搭建的，而通过hexo搭建的样式，有点烂大街的赶脚。另外，想对它做一些改动，看着它的代码有点头大。然后，就接触了Octopress，稍微了解了一下，就决定把我的博客迁到这个上面了。原因有二：1.是基于Ruby开发的，正是我目前在学的语言；2.相对于hexo提供更多的功能。废话不多说，开始搭建第一篇Octopress博客吧。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/page4">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/page2">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

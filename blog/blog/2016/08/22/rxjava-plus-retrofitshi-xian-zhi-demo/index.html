@@ -1,0 +1,952 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>RxJava+Retrofit实现全局过期token自动刷新Demo篇 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="RxJava+Retrofit实现全局过期token自动刷新Demo篇 2016-08-22 10:03 am | Comments 在上篇文章Rxjava+Retrofit 实现全局过期 Token 自动刷新中，主讲了实现的思想，发布之后，有些小伙伴抱怨没有完整的 Demo， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">RxJava+Retrofit实现全局过期token自动刷新Demo篇</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-08-22T10:03:00+08:00'><span class='date'>2016-08-22</span> <span class='time'>10:03 am</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>在上篇文章<a href="http://alighters.com/blog/2016/05/02/rxjava-plus-retrofitshi-xian-wang-luo-dai-li/">Rxjava+Retrofit 实现全局过期 Token 自动刷新</a>中，主讲了实现的思想，发布之后，有些小伙伴抱怨没有完整的 Demo，所以在这里重新补上了一个姗姗来迟的简单的实例。<a href="https://github.com/alighters/AndroidDemos/commit/a7266bef2c0fee2b60f5ef2c3ecd06456d624eef">Android代码点我</a></p>
+
+<!-- more -->
+
+
+<h2>适用情况</h2>
+
+<p>一个应用的大部分请求都需要一个带有 token 的参数，来表示当前的用户信息；另外 token 是带有有效时间的，当 token 过期时，需要执行刷新 token 的操作。这个解决方案就是针对这种情况而产生的，当一个请求收到 token 过期的错误信息，我们会在底层执行刷新 token 的操作（这个操作是透明操作，对用户不可见），当 token 刷新成功之后，则重新执行之前发出的请求。</p>
+
+<p>另外，不适用的就是 token 是放在 http 请求的 header 中的请求，这种情况的需要通过使用 okhttp 的拦截器来实现，可自行查阅其他的文章。</p>
+
+<h2>Demo 实现</h2>
+
+<h3>1.实现思想</h3>
+
+<p>利用 Observale 的 retryWhen 的方法，识别 token 过期失效的错误信息，此时发出刷新 token 请求的代码块，完成之后更新 token，这时之前的请求会重新执行，但将它的 token 更新为最新的。另外通过代理类对所有的请求都进行处理，完成之后，我们只需关注单个 API 的实现，而不用每个都考虑 token 过期，大大地实现解耦操作。</p>
+
+<h3>2.API实现</h3>
+
+<p>为了保证 Demo 的完整性，API 这个环节是必不可少的，这里允许我偷个小懒，没有采用远程的 API 服务来实现。而是使用 NodeJs 在本地写了个简单的服务，所以小小地辛苦读者多动一下手指头，先启动咱们的 API 服务。<a href="https://github.com/alighters/AndroidDemos/blob/master/server/refresh_token.js">NodeJs代码点我</a></p>
+
+<ul>
+<li><p>启动服务
+完成的服务器代码在项目的根目录下的 server 文件中，里面包含一个名 refresh_token 的 js 文件。我们切到 server 目录下，在命令行下执行 <code>node refresh_token.js</code>，就可以启动一个监听端口号为 8888 的服务。
+另外，如果在电脑上访问的话，执行 <a href="http://127.0.0.1:8888">http://127.0.0.1:8888</a> 即可访问；如果通过模拟器访问的话，需要拿到电脑的本地 IP，这里我获取到的是 192.168.56.1。</p></li>
+<li><p>API 介绍
+这里为了模仿真实的 token 原理，我采用时间戳来作为 token 的一种实现。客户端向服务器请求 token, 服务器返回当前的时间戳来作为 token；之后用户每次的请求则需要携带这个 token 作为参数，服务器拿到客户端发送过来的 token，来与当前的时间进行比较，这里我使用的时间间隔为30秒，若小于30秒，服务器认为 token 合法，返回正确结果；若大于30秒，则认为 token 失效。</p></li>
+<li><p>实现
+这里我设计了三个 API，获取 token 的 <code>get_token</code> 及刷新 token 的 <code>refresh_token</code>，简单起见，它俩不需要参数，并且返回的结果相同；另外一个正常请求的 API 是 <code>request</code>，它需要传递一个名称为 token 的参数。代码很简单，如下：</p></li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+</pre></td><td class='code'><pre><code class='js'><span class='line'><span class="kd">var</span> <span class="nx">http</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;http&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">url</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;url&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="kd">var</span> <span class="nx">querystring</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;querystring&#39;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">http</span><span class="p">.</span><span class="nx">createServer</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">request</span><span class="p">,</span> <span class="nx">response</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// 发送 HTTP 头部 </span>
+</span><span class='line'>   <span class="c1">// HTTP 状态值: 200 : OK</span>
+</span><span class='line'>   <span class="c1">// 内容类型: text/plain</span>
+</span><span class='line'>   <span class="nx">response</span><span class="p">.</span><span class="nx">writeHead</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;Content-Type&#39;</span><span class="o">:</span> <span class="s1">&#39;text/plain&#39;</span><span class="p">});</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="kd">var</span> <span class="nx">pathname</span> <span class="o">=</span> <span class="nx">url</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">request</span><span class="p">.</span><span class="nx">url</span><span class="p">).</span><span class="nx">pathname</span><span class="p">;</span>
+</span><span class='line'>   <span class="k">if</span> <span class="p">(</span><span class="nx">pathname</span> <span class="o">==</span> <span class="s2">&quot;/get_token&quot;</span> <span class="o">||</span> <span class="nx">pathname</span> <span class="o">==</span> <span class="s2">&quot;/refresh_token&quot;</span><span class="p">){</span>
+</span><span class='line'>      <span class="c1">// get a new token or refresh the token</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">result</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>         <span class="s2">&quot;success&quot;</span> <span class="o">:</span> <span class="kc">true</span><span class="p">,</span>
+</span><span class='line'>         <span class="s2">&quot;data&quot;</span> <span class="o">:</span> <span class="p">{</span>
+</span><span class='line'>            <span class="s2">&quot;token&quot;</span> <span class="o">:</span> <span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">getTime</span><span class="p">().</span><span class="nx">toString</span><span class="p">()</span>
+</span><span class='line'>         <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="nx">response</span><span class="p">.</span><span class="nx">end</span><span class="p">(</span><span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">result</span><span class="p">));</span>
+</span><span class='line'>   <span class="p">}</span><span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">pathname</span> <span class="o">==</span> <span class="s2">&quot;/request&quot;</span><span class="p">){</span>
+</span><span class='line'>      <span class="c1">// Normal request</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">token_str</span> <span class="o">=</span> <span class="nx">querystring</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">url</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">request</span><span class="p">.</span><span class="nx">url</span><span class="p">).</span><span class="nx">query</span><span class="p">)[</span><span class="s1">&#39;token&#39;</span><span class="p">];</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="nx">token_str</span><span class="p">){</span>
+</span><span class='line'>         <span class="kd">var</span> <span class="nx">token_time</span> <span class="o">=</span> <span class="nb">parseFloat</span><span class="p">(</span><span class="nx">token_str</span><span class="p">);</span>
+</span><span class='line'>         <span class="kd">var</span> <span class="nx">cur_time</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">getTime</span><span class="p">();</span>
+</span><span class='line'>         <span class="k">if</span><span class="p">(</span><span class="nx">cur_time</span> <span class="o">-</span> <span class="nx">token_time</span> <span class="o">&lt;</span> <span class="mi">30</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">){</span>
+</span><span class='line'>            <span class="kd">var</span> <span class="nx">result</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>               <span class="s2">&quot;success&quot;</span> <span class="o">:</span> <span class="kc">true</span><span class="p">,</span>
+</span><span class='line'>               <span class="s2">&quot;data&quot;</span> <span class="o">:</span> <span class="p">{</span>
+</span><span class='line'>                  <span class="s2">&quot;result&quot;</span> <span class="o">:</span> <span class="kc">true</span>
+</span><span class='line'>               <span class="p">}</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="nx">response</span><span class="p">.</span><span class="nx">end</span><span class="p">(</span><span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">result</span><span class="p">));</span>
+</span><span class='line'>         <span class="p">}</span><span class="k">else</span><span class="p">{</span>
+</span><span class='line'>            <span class="nx">response</span><span class="p">.</span><span class="nx">end</span><span class="p">(</span><span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="s2">&quot;success&quot;</span><span class="o">:</span> <span class="kc">false</span><span class="p">,</span> <span class="s2">&quot;error_code&quot;</span> <span class="o">:</span> <span class="mi">1001</span><span class="p">}));</span>
+</span><span class='line'>         <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>         <span class="nx">response</span><span class="p">.</span><span class="nx">end</span><span class="p">(</span><span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">({</span><span class="s2">&quot;success&quot;</span><span class="o">:</span> <span class="kc">false</span><span class="p">,</span> <span class="s2">&quot;error_code&quot;</span> <span class="o">:</span> <span class="mi">1000</span><span class="p">}));</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>   <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">}).</span><span class="nx">listen</span><span class="p">(</span><span class="mi">8888</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码很简单，需要提及的是当 token 超过限定的30秒，返回的 error_code 是 1001；而 token 不存在则返回的 error_code 是 1000，这时我们可能需要做的操作就是重新登录的操作等等。</p>
+
+<h3>3.错误抛出</h3>
+
+<p>当服务器错误信息的时候，同样也是一个 model，不同的是 success 为 false，并且含有 error_code的信息。所以我们需要针对 model 处理的时候，做以判断。主要修改的地方就是 retrofit 的 <code>GsonConvertFactory</code>，这里不再通过 gradle 引入，直接把其源码中的三个文件添加到咱们的项目中。</p>
+
+<p>首先提及的一下是对统一 model 的封装，如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">ApiModel</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kt">boolean</span> <span class="n">success</span><span class="o">;</span>
+</span><span class='line'>    <span class="nd">@SerializedName</span><span class="o">(</span><span class="s">&quot;error_code&quot;</span><span class="o">)</span> <span class="kd">public</span> <span class="kt">int</span> <span class="n">errorCode</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="n">T</span> <span class="n">data</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当正确返回的时候，我们获取到 data，直接给上层；当出错的时候，可以针对 errorCode的信息，做一些处理，让其走最上层调用的 onError 方法。</p>
+
+<p>好了，说说我们这里要修改的地方：</p>
+
+<ul>
+<li>1.修改 <code>GsonConverterFactory</code> 中，生成 <code>GsonResponseBodyConverter</code> 的方法：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span>
+</span><span class='line'><span class="kd">public</span> <span class="n">Converter</span><span class="o">&lt;</span><span class="n">ResponseBody</span><span class="o">,</span> <span class="o">?&gt;</span> <span class="n">responseBodyConverter</span><span class="o">(</span><span class="kd">final</span> <span class="n">Type</span> <span class="n">type</span><span class="o">,</span> <span class="n">Annotation</span><span class="o">[]</span> <span class="n">annotations</span><span class="o">,</span> <span class="n">Retrofit</span> <span class="n">retrofit</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">Type</span> <span class="n">newType</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">ParameterizedType</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      <span class="nd">@Override</span>
+</span><span class='line'>      <span class="kd">public</span> <span class="n">Type</span><span class="o">[]</span> <span class="nf">getActualTypeArguments</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="k">new</span> <span class="n">Type</span><span class="o">[]</span> <span class="o">{</span> <span class="n">type</span> <span class="o">};</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="nd">@Override</span>
+</span><span class='line'>      <span class="kd">public</span> <span class="n">Type</span> <span class="nf">getOwnerType</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="nd">@Override</span>
+</span><span class='line'>      <span class="kd">public</span> <span class="n">Type</span> <span class="nf">getRawType</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="n">ApiModel</span><span class="o">.</span><span class="na">class</span><span class="o">;</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>  <span class="o">};</span>
+</span><span class='line'>  <span class="n">TypeAdapter</span><span class="o">&lt;?&gt;</span> <span class="n">adapter</span> <span class="o">=</span> <span class="n">gson</span><span class="o">.</span><span class="na">getAdapter</span><span class="o">(</span><span class="n">TypeToken</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">newType</span><span class="o">));</span>
+</span><span class='line'>  <span class="k">return</span> <span class="k">new</span> <span class="n">GsonResponseBodyConverter</span><span class="o">&lt;&gt;(</span><span class="n">adapter</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>可以看出我们这里对 type 类型，做以包装，让其重新生成一个类型为 ApiModel 的新类型。因为我们在写接口代码的时候，都以真正的类型 type 来作为返回值的，而不是 ApiModel。</p>
+
+<ul>
+<li>2.GsonResponseBodyConverter的处理
+它的修改，则是要针对返回结果，做以异常的判断并抛出，主要看其的 <code>convert</code>方法：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span>
+</span><span class='line'><span class="kd">public</span> <span class="n">Object</span> <span class="nf">convert</span><span class="o">(</span><span class="n">ResponseBody</span> <span class="n">value</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+</span><span class='line'>  <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">ApiModel</span> <span class="n">apiModel</span> <span class="o">=</span> <span class="o">(</span><span class="n">ApiModel</span><span class="o">)</span> <span class="n">adapter</span><span class="o">.</span><span class="na">fromJson</span><span class="o">(</span><span class="n">value</span><span class="o">.</span><span class="na">charStream</span><span class="o">());</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">apiModel</span><span class="o">.</span><span class="na">errorCode</span> <span class="o">==</span> <span class="n">ErrorCode</span><span class="o">.</span><span class="na">TOKEN_NOT_EXIST</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="k">throw</span> <span class="k">new</span> <span class="nf">TokenNotExistException</span><span class="o">();</span>
+</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">apiModel</span><span class="o">.</span><span class="na">errorCode</span> <span class="o">==</span> <span class="n">ErrorCode</span><span class="o">.</span><span class="na">TOKEN_INVALID</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="k">throw</span> <span class="k">new</span> <span class="nf">TokenInvalidException</span><span class="o">();</span>
+</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(!</span><span class="n">apiModel</span><span class="o">.</span><span class="na">success</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="c1">// TODO: 16/8/21 handle the other error.</span>
+</span><span class='line'>          <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">apiModel</span><span class="o">.</span><span class="na">success</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="n">apiModel</span><span class="o">.</span><span class="na">data</span><span class="o">;</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">value</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>4.添加代理</h3>
+
+<p>在使用 Retrofit 的时候，我们都需要针对每个 API 编写相应的接口代码，最后通过 Retrofit 的 <code>create</code> 方法来实现调用，而这个方法就是通过使用代理，根据这个接口方法的各种注解参数，最后一个个单独的完整的 API 调用。</p>
+
+<p>因为我们也需要对每个 API 做处理，所以我们也对它的 <code>create</code> 方法做一个代理的实现，主要使用的代码是 <code>Proxy</code>类的 <code>newProxyInstance</code>方法。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">T</span> <span class="nf">getProxy</span><span class="o">(</span><span class="n">Class</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">tClass</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">T</span> <span class="n">t</span> <span class="o">=</span> <span class="n">getRetrofit</span><span class="o">().</span><span class="na">create</span><span class="o">(</span><span class="n">tClass</span><span class="o">);</span>
+</span><span class='line'>  <span class="k">return</span> <span class="o">(</span><span class="n">T</span><span class="o">)</span> <span class="n">Proxy</span><span class="o">.</span><span class="na">newProxyInstance</span><span class="o">(</span><span class="n">tClass</span><span class="o">.</span><span class="na">getClassLoader</span><span class="o">(),</span> <span class="k">new</span> <span class="n">Class</span><span class="o">&lt;?&gt;[]</span> <span class="o">{</span> <span class="n">tClass</span> <span class="o">},</span> <span class="k">new</span> <span class="nf">ProxyHandler</span><span class="o">(</span><span class="n">t</span><span class="o">));</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>核心的代理实现则是这个 <code>ProxyHandler</code>，它是对接口 <code>InvocationHandler</code> 的一个实现类。思想就是针对 method 的调用，做以 retryWhen 的包装，在retryWhen 中获取相应的异常信息来做处理，看 retryWhen 的代码：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">retryWhen</span><span class="o">(</span><span class="k">new</span> <span class="n">Func1</span><span class="o">&lt;</span><span class="n">Observable</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">Throwable</span><span class="o">&gt;,</span> <span class="n">Observable</span><span class="o">&lt;?&gt;&gt;()</span> <span class="o">{</span>
+</span><span class='line'>            <span class="nd">@Override</span>
+</span><span class='line'>            <span class="kd">public</span> <span class="n">Observable</span><span class="o">&lt;?&gt;</span> <span class="n">call</span><span class="o">(</span><span class="n">Observable</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">Throwable</span><span class="o">&gt;</span> <span class="n">observable</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="k">return</span> <span class="n">observable</span><span class="o">.</span><span class="na">flatMap</span><span class="o">(</span><span class="k">new</span> <span class="n">Func1</span><span class="o">&lt;</span><span class="n">Throwable</span><span class="o">,</span> <span class="n">Observable</span><span class="o">&lt;?&gt;&gt;()</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="nd">@Override</span>
+</span><span class='line'>                    <span class="kd">public</span> <span class="n">Observable</span><span class="o">&lt;?&gt;</span> <span class="n">call</span><span class="o">(</span><span class="n">Throwable</span> <span class="n">throwable</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                        <span class="k">if</span> <span class="o">(</span><span class="n">throwable</span> <span class="k">instanceof</span> <span class="n">TokenInvalidException</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                            <span class="k">return</span> <span class="nf">refreshTokenWhenTokenInvalid</span><span class="o">();</span>
+</span><span class='line'>                        <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">throwable</span> <span class="k">instanceof</span> <span class="n">TokenNotExistException</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                            <span class="n">Toast</span><span class="o">.</span><span class="na">makeText</span><span class="o">(</span><span class="n">BaseApplication</span><span class="o">.</span><span class="na">getContext</span><span class="o">(),</span> <span class="s">&quot;Token is not existed!!&quot;</span><span class="o">,</span> <span class="n">Toast</span><span class="o">.</span><span class="na">LENGTH_SHORT</span><span class="o">).</span><span class="na">show</span><span class="o">();</span>
+</span><span class='line'>                            <span class="k">return</span> <span class="n">Observable</span><span class="o">.</span><span class="na">error</span><span class="o">(</span><span class="n">throwable</span><span class="o">);</span>
+</span><span class='line'>                        <span class="o">}</span>
+</span><span class='line'>                        <span class="k">return</span> <span class="n">Observable</span><span class="o">.</span><span class="na">error</span><span class="o">(</span><span class="n">throwable</span><span class="o">);</span>
+</span><span class='line'>                    <span class="o">}</span>
+</span><span class='line'>                <span class="o">});</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>        <span class="o">})</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里针对 token 过期的 TokenInvalidException 的异常，执行刷新 token 的操作，刷新 token 的操作则是直接调用 Retrofit 的方法，而不需要走代理了。另外它必须是个同步的代码块，主要的代码就不在这里贴了，具体的代码见 <a href="https://github.com/alighters/AndroidDemos/blob/master/app/src/main/java/com/lighters/demos/token/http/proxy/ProxyHandler.java">这里</a>。</p>
+
+<h3>5.代码验证</h3>
+
+<p>最上层的代码调用中，添加了两个按钮:
++ 按钮1：获取token</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@OnClick</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">btn_token_get</span><span class="o">)</span>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">onGetTokenClick</span><span class="o">(</span><span class="n">View</span> <span class="n">v</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">RetrofitUtil</span><span class="o">.</span><span class="na">getInstance</span><span class="o">()</span>
+</span><span class='line'>      <span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">IApiService</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+</span><span class='line'>      <span class="o">.</span><span class="na">getToken</span><span class="o">()</span>
+</span><span class='line'>      <span class="o">.</span><span class="na">subscribeOn</span><span class="o">(</span><span class="n">Schedulers</span><span class="o">.</span><span class="na">io</span><span class="o">())</span>
+</span><span class='line'>      <span class="o">.</span><span class="na">observeOn</span><span class="o">(</span><span class="n">AndroidSchedulers</span><span class="o">.</span><span class="na">mainThread</span><span class="o">())</span>
+</span><span class='line'>      <span class="o">.</span><span class="na">subscribe</span><span class="o">(</span><span class="k">new</span> <span class="n">Subscriber</span><span class="o">&lt;</span><span class="n">TokenModel</span><span class="o">&gt;()</span> <span class="o">{</span>
+</span><span class='line'>          <span class="nd">@Override</span>
+</span><span class='line'>          <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onCompleted</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="nd">@Override</span>
+</span><span class='line'>          <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onError</span><span class="o">(</span><span class="n">Throwable</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="nd">@Override</span>
+</span><span class='line'>          <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onNext</span><span class="o">(</span><span class="n">TokenModel</span> <span class="n">model</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>              <span class="k">if</span> <span class="o">(</span><span class="n">model</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">TextUtils</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">(</span><span class="n">model</span><span class="o">.</span><span class="na">token</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>                  <span class="n">GlobalToken</span><span class="o">.</span><span class="na">updateToken</span><span class="o">(</span><span class="n">model</span><span class="o">.</span><span class="na">token</span><span class="o">);</span>
+</span><span class='line'>              <span class="o">}</span>
+</span><span class='line'>          <span class="o">}</span>
+</span><span class='line'>      <span class="o">});</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>token 获取成功之后，仅仅更新一下全局的token即可。</p>
+
+<ul>
+<li>按钮2：正常的请求</li>
+</ul>
+
+
+<p>这里为了模拟多请求，这里我直接调正常的请求5次：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@OnClick</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">id</span><span class="o">.</span><span class="na">btn_request</span><span class="o">)</span>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">onRequestClick</span><span class="o">(</span><span class="n">View</span> <span class="n">v</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">RetrofitUtil</span><span class="o">.</span><span class="na">getInstance</span><span class="o">()</span>
+</span><span class='line'>          <span class="o">.</span><span class="na">getProxy</span><span class="o">(</span><span class="n">IApiService</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+</span><span class='line'>          <span class="o">.</span><span class="na">getResult</span><span class="o">(</span><span class="n">GlobalToken</span><span class="o">.</span><span class="na">getToken</span><span class="o">())</span>
+</span><span class='line'>          <span class="o">.</span><span class="na">subscribeOn</span><span class="o">(</span><span class="n">Schedulers</span><span class="o">.</span><span class="na">io</span><span class="o">())</span>
+</span><span class='line'>          <span class="o">.</span><span class="na">observeOn</span><span class="o">(</span><span class="n">AndroidSchedulers</span><span class="o">.</span><span class="na">mainThread</span><span class="o">())</span>
+</span><span class='line'>          <span class="o">.</span><span class="na">subscribe</span><span class="o">(</span><span class="k">new</span> <span class="n">Subscriber</span><span class="o">&lt;</span><span class="n">ResultModel</span><span class="o">&gt;()</span> <span class="o">{</span>
+</span><span class='line'>              <span class="nd">@Override</span>
+</span><span class='line'>              <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onCompleted</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>              <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>              <span class="nd">@Override</span>
+</span><span class='line'>              <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onError</span><span class="o">(</span><span class="n">Throwable</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>              <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>              <span class="nd">@Override</span>
+</span><span class='line'>              <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onNext</span><span class="o">(</span><span class="n">ResultModel</span> <span class="n">model</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>              <span class="o">}</span>
+</span><span class='line'>          <span class="o">});</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>为了查看输出，另外对 Okhttp 添加了 <code>HttpLoggingInterceptor</code> 并设置 Body 的 level 输出，用来监测 http 请求的输出。</p>
+
+<p>一切完成之后，先点击获取 token 的按钮，等待30秒之后，再点击正常请求按钮。可以看到如下的输出：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="o">--&gt;</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471774119164 http/1.1</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">END</span> <span class="n">GET</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471774119164 http/1.1</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">END</span> <span class="n">GET</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471774119164 http/1.1</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">END</span> <span class="n">GET</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471774119164 http/1.1</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">END</span> <span class="n">GET</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471774119164 http/1.1</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">END</span> <span class="n">GET</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="mi">200</span> <span class="n">OK</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471774119164 (8ms)</span>
+</span><span class='line'> <span class="n">Content</span><span class="o">-</span><span class="nl">Type:</span> <span class="n">text</span><span class="o">/</span><span class="n">plain</span>
+</span><span class='line'> <span class="nl">Date:</span> <span class="n">Mon</span><span class="o">,</span> <span class="mi">22</span> <span class="n">Aug</span> <span class="mi">2016</span> <span class="mi">00</span><span class="o">:</span><span class="mi">38</span><span class="o">:</span><span class="mi">09</span> <span class="n">GMT</span>
+</span><span class='line'> <span class="nl">Connection:</span> <span class="n">keep</span><span class="o">-</span><span class="n">alive</span>
+</span><span class='line'> <span class="n">Transfer</span><span class="o">-</span><span class="nl">Encoding:</span> <span class="n">chunked</span>
+</span><span class='line'> <span class="o">{</span><span class="s">&quot;success&quot;</span><span class="o">:</span><span class="kc">false</span><span class="o">,</span><span class="s">&quot;error_code&quot;</span><span class="o">:</span><span class="mi">1001</span><span class="o">}</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="n">END</span> <span class="nf">HTTP</span> <span class="o">(</span><span class="mi">35</span><span class="o">-</span><span class="kt">byte</span> <span class="n">body</span><span class="o">)</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="mi">200</span> <span class="n">OK</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471774119164 (5ms)</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="mi">200</span> <span class="n">OK</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471774119164 (4ms)</span>
+</span><span class='line'> <span class="n">Content</span><span class="o">-</span><span class="nl">Type:</span> <span class="n">text</span><span class="o">/</span><span class="n">plain</span>
+</span><span class='line'> <span class="nl">Date:</span> <span class="n">Mon</span><span class="o">,</span> <span class="mi">22</span> <span class="n">Aug</span> <span class="mi">2016</span> <span class="mi">00</span><span class="o">:</span><span class="mi">38</span><span class="o">:</span><span class="mi">09</span> <span class="n">GMT</span>
+</span><span class='line'> <span class="nl">Connection:</span> <span class="n">keep</span><span class="o">-</span><span class="n">alive</span>
+</span><span class='line'> <span class="n">Transfer</span><span class="o">-</span><span class="nl">Encoding:</span> <span class="n">chunked</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/refresh_token http/1.1</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">END</span> <span class="n">GET</span>
+</span><span class='line'> <span class="o">{</span><span class="s">&quot;success&quot;</span><span class="o">:</span><span class="kc">false</span><span class="o">,</span><span class="s">&quot;error_code&quot;</span><span class="o">:</span><span class="mi">1001</span><span class="o">}</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="n">END</span> <span class="nf">HTTP</span> <span class="o">(</span><span class="mi">35</span><span class="o">-</span><span class="kt">byte</span> <span class="n">body</span><span class="o">)</span>
+</span><span class='line'> <span class="n">Content</span><span class="o">-</span><span class="nl">Type:</span> <span class="n">text</span><span class="o">/</span><span class="n">plain</span>
+</span><span class='line'> <span class="nl">Date:</span> <span class="n">Mon</span><span class="o">,</span> <span class="mi">22</span> <span class="n">Aug</span> <span class="mi">2016</span> <span class="mi">00</span><span class="o">:</span><span class="mi">38</span><span class="o">:</span><span class="mi">09</span> <span class="n">GMT</span>
+</span><span class='line'> <span class="nl">Connection:</span> <span class="n">keep</span><span class="o">-</span><span class="n">alive</span>
+</span><span class='line'> <span class="n">Transfer</span><span class="o">-</span><span class="nl">Encoding:</span> <span class="n">chunked</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="mi">200</span> <span class="n">OK</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471774119164 (7ms)</span>
+</span><span class='line'> <span class="n">Content</span><span class="o">-</span><span class="nl">Type:</span> <span class="n">text</span><span class="o">/</span><span class="n">plain</span>
+</span><span class='line'> <span class="nl">Date:</span> <span class="n">Mon</span><span class="o">,</span> <span class="mi">22</span> <span class="n">Aug</span> <span class="mi">2016</span> <span class="mi">00</span><span class="o">:</span><span class="mi">38</span><span class="o">:</span><span class="mi">09</span> <span class="n">GMT</span>
+</span><span class='line'> <span class="nl">Connection:</span> <span class="n">keep</span><span class="o">-</span><span class="n">alive</span>
+</span><span class='line'> <span class="o">{</span><span class="s">&quot;success&quot;</span><span class="o">:</span><span class="kc">false</span><span class="o">,</span><span class="s">&quot;error_code&quot;</span><span class="o">:</span><span class="mi">1001</span><span class="o">}</span>
+</span><span class='line'> <span class="n">Transfer</span><span class="o">-</span><span class="nl">Encoding:</span> <span class="n">chunked</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="n">END</span> <span class="nf">HTTP</span> <span class="o">(</span><span class="mi">35</span><span class="o">-</span><span class="kt">byte</span> <span class="n">body</span><span class="o">)</span>
+</span><span class='line'> <span class="o">{</span><span class="s">&quot;success&quot;</span><span class="o">:</span><span class="kc">false</span><span class="o">,</span><span class="s">&quot;error_code&quot;</span><span class="o">:</span><span class="mi">1001</span><span class="o">}</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="n">END</span> <span class="nf">HTTP</span> <span class="o">(</span><span class="mi">35</span><span class="o">-</span><span class="kt">byte</span> <span class="n">body</span><span class="o">)</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="mi">200</span> <span class="n">OK</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/refresh_token (2ms)</span>
+</span><span class='line'> <span class="n">Content</span><span class="o">-</span><span class="nl">Type:</span> <span class="n">text</span><span class="o">/</span><span class="n">plain</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="mi">200</span> <span class="n">OK</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471774119164 (6ms)</span>
+</span><span class='line'> <span class="nl">Date:</span> <span class="n">Mon</span><span class="o">,</span> <span class="mi">22</span> <span class="n">Aug</span> <span class="mi">2016</span> <span class="mi">00</span><span class="o">:</span><span class="mi">38</span><span class="o">:</span><span class="mi">09</span> <span class="n">GMT</span>
+</span><span class='line'> <span class="n">Content</span><span class="o">-</span><span class="nl">Type:</span> <span class="n">text</span><span class="o">/</span><span class="n">plain</span>
+</span><span class='line'> <span class="nl">Date:</span> <span class="n">Mon</span><span class="o">,</span> <span class="mi">22</span> <span class="n">Aug</span> <span class="mi">2016</span> <span class="mi">00</span><span class="o">:</span><span class="mi">38</span><span class="o">:</span><span class="mi">09</span> <span class="n">GMT</span>
+</span><span class='line'> <span class="nl">Connection:</span> <span class="n">keep</span><span class="o">-</span><span class="n">alive</span>
+</span><span class='line'> <span class="nl">Connection:</span> <span class="n">keep</span><span class="o">-</span><span class="n">alive</span>
+</span><span class='line'> <span class="n">Transfer</span><span class="o">-</span><span class="nl">Encoding:</span> <span class="n">chunked</span>
+</span><span class='line'> <span class="n">Transfer</span><span class="o">-</span><span class="nl">Encoding:</span> <span class="n">chunked</span>
+</span><span class='line'> <span class="o">{</span><span class="s">&quot;success&quot;</span><span class="o">:</span><span class="kc">true</span><span class="o">,</span><span class="s">&quot;data&quot;</span><span class="o">:{</span><span class="s">&quot;token&quot;</span><span class="o">:</span><span class="s">&quot;1471826289336&quot;</span><span class="o">}}</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="n">END</span> <span class="nf">HTTP</span> <span class="o">(</span><span class="mi">49</span><span class="o">-</span><span class="kt">byte</span> <span class="n">body</span><span class="o">)</span>
+</span><span class='line'> <span class="o">{</span><span class="s">&quot;success&quot;</span><span class="o">:</span><span class="kc">false</span><span class="o">,</span><span class="s">&quot;error_code&quot;</span><span class="o">:</span><span class="mi">1001</span><span class="o">}</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="n">END</span> <span class="nf">HTTP</span> <span class="o">(</span><span class="mi">35</span><span class="o">-</span><span class="kt">byte</span> <span class="n">body</span><span class="o">)</span>
+</span><span class='line'><span class="nl">roxy:</span> <span class="n">Refresh</span> <span class="n">token</span> <span class="n">success</span><span class="o">,</span> <span class="n">time</span> <span class="o">=</span> <span class="mi">1471790019657</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471826289336 http/1.1</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471826289336 http/1.1</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">END</span> <span class="n">GET</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">END</span> <span class="n">GET</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471826289336 http/1.1</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471826289336 http/1.1</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">END</span> <span class="n">GET</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">END</span> <span class="n">GET</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">GET</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471826289336 http/1.1</span>
+</span><span class='line'> <span class="o">--&gt;</span> <span class="n">END</span> <span class="n">GET</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="mi">200</span> <span class="n">OK</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471826289336 (2ms)</span>
+</span><span class='line'> <span class="n">Content</span><span class="o">-</span><span class="nl">Type:</span> <span class="n">text</span><span class="o">/</span><span class="n">plain</span>
+</span><span class='line'> <span class="nl">Date:</span> <span class="n">Mon</span><span class="o">,</span> <span class="mi">22</span> <span class="n">Aug</span> <span class="mi">2016</span> <span class="mi">00</span><span class="o">:</span><span class="mi">38</span><span class="o">:</span><span class="mi">09</span> <span class="n">GMT</span>
+</span><span class='line'> <span class="nl">Connection:</span> <span class="n">keep</span><span class="o">-</span><span class="n">alive</span>
+</span><span class='line'> <span class="n">Transfer</span><span class="o">-</span><span class="nl">Encoding:</span> <span class="n">chunked</span>
+</span><span class='line'> <span class="o">{</span><span class="s">&quot;success&quot;</span><span class="o">:</span><span class="kc">true</span><span class="o">,</span><span class="s">&quot;data&quot;</span><span class="o">:{</span><span class="s">&quot;result&quot;</span><span class="o">:</span><span class="kc">true</span><span class="o">}}</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="n">END</span> <span class="nf">HTTP</span> <span class="o">(</span><span class="mi">39</span><span class="o">-</span><span class="kt">byte</span> <span class="n">body</span><span class="o">)</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="mi">200</span> <span class="n">OK</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471826289336 (4ms)</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="mi">200</span> <span class="n">OK</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471826289336 (6ms)</span>
+</span><span class='line'> <span class="n">Content</span><span class="o">-</span><span class="nl">Type:</span> <span class="n">text</span><span class="o">/</span><span class="n">plain</span>
+</span><span class='line'> <span class="nl">Date:</span> <span class="n">Mon</span><span class="o">,</span> <span class="mi">22</span> <span class="n">Aug</span> <span class="mi">2016</span> <span class="mi">00</span><span class="o">:</span><span class="mi">38</span><span class="o">:</span><span class="mi">09</span> <span class="n">GMT</span>
+</span><span class='line'> <span class="nl">Connection:</span> <span class="n">keep</span><span class="o">-</span><span class="n">alive</span>
+</span><span class='line'> <span class="n">Transfer</span><span class="o">-</span><span class="nl">Encoding:</span> <span class="n">chunked</span>
+</span><span class='line'> <span class="o">{</span><span class="s">&quot;success&quot;</span><span class="o">:</span><span class="kc">true</span><span class="o">,</span><span class="s">&quot;data&quot;</span><span class="o">:{</span><span class="s">&quot;result&quot;</span><span class="o">:</span><span class="kc">true</span><span class="o">}}</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="n">END</span> <span class="nf">HTTP</span> <span class="o">(</span><span class="mi">39</span><span class="o">-</span><span class="kt">byte</span> <span class="n">body</span><span class="o">)</span>
+</span><span class='line'> <span class="n">Content</span><span class="o">-</span><span class="nl">Type:</span> <span class="n">text</span><span class="o">/</span><span class="n">plain</span>
+</span><span class='line'> <span class="nl">Date:</span> <span class="n">Mon</span><span class="o">,</span> <span class="mi">22</span> <span class="n">Aug</span> <span class="mi">2016</span> <span class="mi">00</span><span class="o">:</span><span class="mi">38</span><span class="o">:</span><span class="mi">09</span> <span class="n">GMT</span>
+</span><span class='line'> <span class="nl">Connection:</span> <span class="n">keep</span><span class="o">-</span><span class="n">alive</span>
+</span><span class='line'> <span class="n">Transfer</span><span class="o">-</span><span class="nl">Encoding:</span> <span class="n">chunked</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="mi">200</span> <span class="n">OK</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471826289336 (4ms)</span>
+</span><span class='line'> <span class="n">Content</span><span class="o">-</span><span class="nl">Type:</span> <span class="n">text</span><span class="o">/</span><span class="n">plain</span>
+</span><span class='line'> <span class="nl">Date:</span> <span class="n">Mon</span><span class="o">,</span> <span class="mi">22</span> <span class="n">Aug</span> <span class="mi">2016</span> <span class="mi">00</span><span class="o">:</span><span class="mi">38</span><span class="o">:</span><span class="mi">09</span> <span class="n">GMT</span>
+</span><span class='line'> <span class="nl">Connection:</span> <span class="n">keep</span><span class="o">-</span><span class="n">alive</span>
+</span><span class='line'> <span class="n">Transfer</span><span class="o">-</span><span class="nl">Encoding:</span> <span class="n">chunked</span>
+</span><span class='line'> <span class="o">{</span><span class="s">&quot;success&quot;</span><span class="o">:</span><span class="kc">true</span><span class="o">,</span><span class="s">&quot;data&quot;</span><span class="o">:{</span><span class="s">&quot;result&quot;</span><span class="o">:</span><span class="kc">true</span><span class="o">}}</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="n">END</span> <span class="nf">HTTP</span> <span class="o">(</span><span class="mi">39</span><span class="o">-</span><span class="kt">byte</span> <span class="n">body</span><span class="o">)</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="mi">200</span> <span class="n">OK</span> <span class="nl">http:</span><span class="c1">//192.168.56.1:8888/request?token=1471826289336 (7ms)</span>
+</span><span class='line'> <span class="n">Content</span><span class="o">-</span><span class="nl">Type:</span> <span class="n">text</span><span class="o">/</span><span class="n">plain</span>
+</span><span class='line'> <span class="nl">Date:</span> <span class="n">Mon</span><span class="o">,</span> <span class="mi">22</span> <span class="n">Aug</span> <span class="mi">2016</span> <span class="mi">00</span><span class="o">:</span><span class="mi">38</span><span class="o">:</span><span class="mi">09</span> <span class="n">GMT</span>
+</span><span class='line'> <span class="nl">Connection:</span> <span class="n">keep</span><span class="o">-</span><span class="n">alive</span>
+</span><span class='line'> <span class="n">Transfer</span><span class="o">-</span><span class="nl">Encoding:</span> <span class="n">chunked</span>
+</span><span class='line'> <span class="o">{</span><span class="s">&quot;success&quot;</span><span class="o">:</span><span class="kc">true</span><span class="o">,</span><span class="s">&quot;data&quot;</span><span class="o">:{</span><span class="s">&quot;result&quot;</span><span class="o">:</span><span class="kc">true</span><span class="o">}}</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="n">END</span> <span class="nf">HTTP</span> <span class="o">(</span><span class="mi">39</span><span class="o">-</span><span class="kt">byte</span> <span class="n">body</span><span class="o">)</span>
+</span><span class='line'> <span class="o">{</span><span class="s">&quot;success&quot;</span><span class="o">:</span><span class="kc">true</span><span class="o">,</span><span class="s">&quot;data&quot;</span><span class="o">:{</span><span class="s">&quot;result&quot;</span><span class="o">:</span><span class="kc">true</span><span class="o">}}</span>
+</span><span class='line'> <span class="o">&lt;--</span> <span class="n">END</span> <span class="nf">HTTP</span> <span class="o">(</span><span class="mi">39</span><span class="o">-</span><span class="kt">byte</span> <span class="n">body</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>刚发出的5个请求都返回了 token 过期的 error，之后看到一个重新刷新 token 的请求，它成功之后，原先的5个请求又进行了重试，并都返回了成功的信息。一切圆满。</p>
+
+<p>最后，一个完整而又简单的Demo就完成了，若是还有什么不清楚的小伙伴可以加 QQ 群：289926871 来交流。完整的代码<a href="https://github.com/alighters/AndroidDemos">这里</a>的包为 token 的结构下，server 代码则是根目录下的 server 文件夹中，测试的时候不要忘启动 server 哦。</p>
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/">/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2016-08-22T10:03:00+08:00'><span class='date'>2016-08-22</span> <span class='time'>10:03 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/06/25/threadlocal-in-android-message/" title="Previous Post: ThreadLocal在Android消息机制中的作用">&laquo; ThreadLocal在Android消息机制中的作用</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/08/26/hashmap-knowledge-elements/" title="Next Post: HashMap 实现细节点整理">HashMap 实现细节点整理 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

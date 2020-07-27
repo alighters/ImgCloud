@@ -1,0 +1,414 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Rails的部署实践总结 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="Rails的部署实践总结 2016-03-20 11:05 pm | Comments 最近刚刚实践了一把Rails的自动部署，由于自己对这个一知半解，期间遇到了不少实践性的问题以及概念性的问题，在这里把这些问题都记录下来，以防以后再遇到。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2016/03/20/rails-deploy-summary/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Rails的部署实践总结</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-03-20T23:05:55+00:00'><span class='date'>2016-03-20</span> <span class='time'>11:05 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>最近刚刚实践了一把Rails的自动部署，由于自己对这个一知半解，期间遇到了不少实践性的问题以及概念性的问题，在这里把这些问题都记录下来，以防以后再遇到。文中主要参照<a href="http://www.jianshu.com/p/3417c69a824a">capstrano半自动部署rails程序</a>这篇文章，来按步骤部署。</p>
+
+<!-- more -->
+
+
+<h3>先说一下capstrano能帮我们做什么？</h3>
+
+<p>在我们使用rails建一个简单的服务器的时候，最后我们需要也同样把它建立在我们自己的服务器上去。capstrano就是这样的场景产生的，最终我们只需在我们的应用程序的主目录下，直接调用<code>cap production deploy</code>（production指的是我们的开发环境）就可直接在服务器上看到我们更改之后的运行程序了，当然在这之前，是需要我们在rails中，进行一些必要的配置的。</p>
+
+<h3>主要问题记录</h3>
+
+<ul>
+<li><p>配置cap的远程连接
+在cap中的部署过程中，它需要读取我们的git远程仓库所在的地址，然后将其部署编译到我们在服务器中所指定的位置。若是配置了nginx，则也会在nginx的配置中，添加代理我们的应用程序的配置。
+这里，有几个细节问题需要注意一下，
+1） git仓库ssh key的添加。例如，我们若是设置了github作为我们应用程序的仓库，则需要在github添加服务器所对应ssh key，这样来保证我们服务器能获取到github仓库中最新的代码。</p>
+
+<p>2）cap配置远程的ssh。我使用的是亚马逊的aws，它的ssh不是通过用户名跟密码来连接的，这个让我愣怔了半天，一直在找我的用户名跟密码。但是最后在配置中看到一个key的设置，才想到直接使用它提供的.pem文件，是不是可以，竟然就成功了，颇感神奇。主要的代码配置如下，这样就不用填用户名跟密码了。</p></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># The server-based syntax can be used to override options:
+</span><span class='line'># ------------------------------------
+</span><span class='line'> server 'ec2-52-193-240-0.ap-northeast-1.compute.amazonaws.com',
+</span><span class='line'>   user: 'ubuntu',
+</span><span class='line'>   roles: %w{web app db},
+</span><span class='line'>   ssh_options: {
+</span><span class='line'>     #user: '****', # overrides user setting above
+</span><span class='line'>     keys: %w(~/.ssh/david.pem),
+</span><span class='line'>     forward_agent: false,
+</span><span class='line'>     auth_methods: %w(publickey password),
+</span><span class='line'>     #password: '****'
+</span><span class='line'>   }</span></code></pre></td></tr></table></div></figure>
+
+
+<p>PS: 这里使用的<code>.pem</code>文件是aws提供的私钥文件，用来进行ssh的连接。</p>
+
+<ul>
+<li>nginx的使用
+先得弄明白nginx的主要作用，来提供我们的服务的代理，进行我们的应用服务程序的跳转过滤以及代理配置。这里，举个最肤浅的例子，我们的rails程序启动之后往往都是默认3000端口，但是我们通过nginx，只对外暴露一个80端口，同时隐藏了我们的应用名称，只需配置相应的路由规则，让其访问我们本地的3000端口，但在用户看来只有80端口，很神奇的有木有。
+这里，注意的是nginx一般对我们的静态文件做缓存的全局代理，另外，访问我们的动态程序，需要在nginx的配置中，在server节点添加我们的应用程序对应规则，我们这里直接修改<code>proxy_pass</code>这个节点，指向我们的地址就好。</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>proxy_pass http://localhost:3000;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>接下来，就是需要启动我们本地服务的3000端口了。</p>
+
+<ul>
+<li>rails服务的启动
+这里之前一直以为执行<code>cap deploy</code>之后，我们的服务器程序也就自动启动了。可是那我的端口是多少，它是怎么设置的。最后发现还是我太天真了，这里还是要自己启动的。跳转至我们的服务器程序<code>/var/www/app/current</code>目录下，通过执行<code>bundle exec rails s -e production</code>，来启动我们的程序。看我们的rails程序是否处于启动的状态，可通过进程查看的方式来确定，执行命令<code>ps -ef | grep rails</code>来找到是否有相应的进程。</li>
+</ul>
+
+
+<h3>常用的命令</h3>
+
+<ul>
+<li>执行nginx的重启操作</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sudo service nginx restart</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><p>nginx的信息 <code>nginx -V</code> 可以看到nginx的访问日志以及错误日志的目录</p></li>
+<li><p>nginx维护的设置目录：<code>/etc/nginx/sites-enabled/</code></p></li>
+<li><p>查看nginx的进程： <code>ps -ef | grep nginx</code></p></li>
+<li><p>服务器上rails的执行： <code>bundle exec rails s -e production</code></p></li>
+<li><p>使Rails server在后台运行的命令screen， 通过screen命令可以避免我们的ssh连接断开时，保证我们启动的服务还在运行。常用的screen命令如下：</p></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>screen + 命令 //会立即创建并进入一个会话。
+</span><span class='line'>screen -dmS {name} //建立一个处于断开模式下的会话，并根据我们的需要指定其会话名称。
+</span><span class='line'>screen -list //列出所有会话。
+</span><span class='line'>screen -r {name} //进入指定会话。
+</span><span class='line'>ctrl +ad //输入快捷键ctrl +a和d，可暂时退出当前会话。
+</span><span class='line'>exit //进入指定会话后执行exit即可关闭该会话。</span></code></pre></td></tr></table></div></figure>
+
+
+<p>最后，我们的程序已经完整的在服务器上跑起来了，过程还是颇多周折。期间，又加深了对linux命令的熟悉同时深入了解之前只知其名的程序，还是感觉代码这种要多动手啊。最后最后，欢迎对我这个菜鸟拍砖。</p>
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2016/03/20/rails-deploy-summary/">/blog/2016/03/20/rails-deploy-summary/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2016-03-20T23:05:55+00:00'><span class='date'>2016-03-20</span> <span class='time'>11:05 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ruby/'>ruby</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2016/03/20/rails-deploy-summary/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2016/03/20/rails-deploy-summary/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/03/02/programmer-look-product/" title="Previous Post: 程序猿看产品开发">&laquo; 程序猿看产品开发</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/04/15/dagger2-indepth-understanding/" title="Next Post: Dagger2深入理解">Dagger2深入理解 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2016/03/20/rails-deploy-summary/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2016/03/20/rails-deploy-summary/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

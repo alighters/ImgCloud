@@ -1,0 +1,691 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Octopress搭建博客之路1 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="Octopress搭建博客之路1 2016-04-23 10:00 pm | Comments 最近，因之前的博客是通过hexo搭建的，而通过hexo搭建的样式，有点烂大街的赶脚。另外，想对它做一些改动，看着它的代码有点头大。然后，就接触了Octopress，稍微了解了一下， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Octopress搭建博客之路1</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-04-23T22:00:00+08:00'><span class='date'>2016-04-23</span> <span class='time'>10:00 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>最近，因之前的博客是通过hexo搭建的，而通过hexo搭建的样式，有点烂大街的赶脚。另外，想对它做一些改动，看着它的代码有点头大。然后，就接触了Octopress，稍微了解了一下，就决定把我的博客迁到这个上面了。原因有二：1.是基于Ruby开发的，正是我目前在学的语言；2.相对于hexo提供更多的功能。废话不多说，开始搭建第一篇Octopress博客吧。</p>
+
+<!-- more -->
+
+
+<h2>配置Octopress</h2>
+
+<ul>
+<li><p>准备工具
+我们需要git、ruby > 1.9.3、bundler</p></li>
+<li><p>项目clone</p></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">git</span> <span class="nb">clone</span> <span class="ss">git</span><span class="p">:</span><span class="sr">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">imathis</span><span class="o">/</span><span class="n">octopress</span><span class="o">.</span><span class="n">git</span> <span class="n">blog</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在此把blog设置为我们的写博客的目录。</p>
+
+<blockquote><p>Tips：建议fork这个github的地址，建立一个个人的配置，这样就可以对网站的样式进行个人配置的保存工作。</p></blockquote>
+
+<ul>
+<li>安装依赖</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">bundle</span> <span class="n">install</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>配置主题</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">rake</span> <span class="n">install</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里会安装Octopress提供的默认主题。</p>
+
+<ul>
+<li>错误解决
+在执行主题配置，执行<code>rake</code>的时候，会报下面的错误。具体原因，是因为rake版本不匹配，笔者安装的rake版本过多的问题。</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">rake</span> <span class="n">aborted!</span>
+</span><span class='line'><span class="no">Gem</span><span class="o">::</span><span class="ss">LoadError</span><span class="p">:</span> <span class="no">You</span> <span class="n">have</span> <span class="n">already</span> <span class="n">activated</span> <span class="n">rake</span> <span class="mi">11</span><span class="o">.</span><span class="mi">1</span><span class="o">.</span><span class="mi">2</span><span class="p">,</span> <span class="n">but</span> <span class="n">your</span> <span class="no">Gemfile</span> <span class="n">requires</span> <span class="n">rake</span> <span class="mi">10</span><span class="o">.</span><span class="mi">5</span><span class="o">.</span><span class="mi">0</span><span class="o">.</span> <span class="no">Prepending</span> <span class="sb">`bundle exec`</span> <span class="n">to</span> <span class="n">your</span> <span class="n">command</span> <span class="n">may</span> <span class="n">solve</span> <span class="n">this</span><span class="o">.</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>按照提示的解决方案，添加<code>bundle exec</code>就可以解决，那每次这样输入，不是太麻烦了么。还有另一个解决方案，移除10.5.0的rake版本，在命令行下，执行命令如下：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">gem</span> <span class="n">uninstall</span> <span class="n">rake</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>系统会列出所有的rake版本，选择相应版本即可。</p>
+
+<h2>创建blog</h2>
+
+<ul>
+<li>创建blog
+Octopress的命令，都是通过rake来执行的，接下来，咱们来看一下Octopress提供了哪些功能？执行<code>rake -T</code>，来查看所有的任务命令，可以看到有如下的输出：</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">rake</span> <span class="n">clean</span>                     <span class="c1"># Clean out caches: .pygments-cache, .gist-cache, .sass-cache</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">copydot</span><span class="o">[</span><span class="n">source</span><span class="p">,</span><span class="n">dest</span><span class="o">]</span>      <span class="c1"># copy dot files for deployment</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">deploy</span>                    <span class="c1"># Default deploy task</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">gen_deploy</span>                <span class="c1"># Generate website and deploy</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">generate</span>                  <span class="c1"># Generate jekyll site</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">install</span><span class="o">[</span><span class="n">theme</span><span class="o">]</span>            <span class="c1"># Initial setup for Octopress: copies the default theme into the ...</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">integrate</span>                 <span class="c1"># Move all stashed posts back into the posts directory, ready for...</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">isolate</span><span class="o">[</span><span class="n">filename</span><span class="o">]</span>         <span class="c1"># Move all other posts than the one currently being worked on to ...</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">list</span>                      <span class="c1"># list tasks</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">new_page</span><span class="o">[</span><span class="n">filename</span><span class="o">]</span>        <span class="c1"># Create a new page in source/(filename)/index.markdown</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">new_post</span><span class="o">[</span><span class="n">title</span><span class="o">]</span>           <span class="c1"># Begin a new post in source/_posts</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">preview</span>                   <span class="c1"># preview the site in a web browser</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">push</span>                      <span class="c1"># deploy public directory to github pages</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">rsync</span>                     <span class="c1"># Deploy website via rsync</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">set_root_dir</span><span class="o">[</span><span class="n">dir</span><span class="o">]</span>         <span class="c1"># Update configurations to support publishing to root or sub dire...</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">setup_github_pages</span><span class="o">[</span><span class="n">repo</span><span class="o">]</span>  <span class="c1"># Set up _deploy folder and deploy branch for Github Pages deploy...</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">update_source</span><span class="o">[</span><span class="n">theme</span><span class="o">]</span>      <span class="c1"># Move source to source.old, install source theme updates, replac...</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">update_style</span><span class="o">[</span><span class="n">theme</span><span class="o">]</span>       <span class="c1"># Move sass to sass.old, install sass theme updates, replace sass...</span>
+</span><span class='line'><span class="n">rake</span> <span class="n">watch</span>                     <span class="c1"># Watch the site and regenerate when it changes</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>从中，可以看到我们将会用到的几个常用命令<code>deploy</code>来执行网站的部署，<code>new_page</code>来创建页面，<code>new_post</code>来创建新的博客。
++ 新建第一篇博客</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">rake</span> <span class="n">new_post</span><span class="o">[</span><span class="s1">&#39;first blog&#39;</span><span class="o">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>执行完之后，就会得到如下的系统输出：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">mkdir</span> <span class="o">-</span><span class="nb">p</span> <span class="n">source</span><span class="o">/</span><span class="n">_posts</span>
+</span><span class='line'><span class="no">Creating</span> <span class="kp">new</span> <span class="ss">post</span><span class="p">:</span> <span class="n">source</span><span class="o">/</span><span class="n">_posts</span><span class="o">/</span><span class="mi">2016</span><span class="o">-</span><span class="mo">04</span><span class="o">-</span><span class="mi">23</span><span class="o">-</span><span class="n">first</span><span class="o">-</span><span class="n">blog</span><span class="o">.</span><span class="n">markdown</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>预览页面
+这里使用<code>preview</code>命令</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">rake</span> <span class="n">preview</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>之后，会看到提供给的提示是端口4000，在浏览器中输入：<code>localhost: 4000</code>，则可以看到我们的first blog了。如图：</p>
+
+<p><img src="http://alighters.github.io/imgs/first_blog.png" alt="First blog.png" /></p>
+
+<ul>
+<li>错误解决
+在执行新建博客的时候，会遇到rake new_post不识别的问题。这个在官方文档中，提到是由我的命令行工具使用了<code>zsh</code>的缘故。解决方案，打开<code>zsh</code>的配置文件<code>.zshrc</code>。在其中，添加如下代码：</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">alias</span> <span class="n">rake</span><span class="o">=</span><span class="s1">&#39;noglob rake&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>网站配置</h2>
+
+<p>这里<code>Octopress</code>主要的配置文件，是由根目录下面的<code>_config.yml</code>文件，来进行配置的。主要代码如下，可以看到看到其支持的功能非常丰富：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1"># ----------------------- #</span>
+</span><span class='line'><span class="c1">#      Main Configs       #</span>
+</span><span class='line'><span class="c1"># ----------------------- #</span>
+</span><span class='line'>
+</span><span class='line'><span class="ss">url</span><span class="p">:</span> <span class="ss">http</span><span class="p">:</span><span class="sr">//</span><span class="n">alighters</span><span class="o">.</span><span class="n">com</span>
+</span><span class='line'><span class="ss">title</span><span class="p">:</span> <span class="no">My</span> <span class="no">Octopress</span> <span class="no">Blog</span>
+</span><span class='line'><span class="ss">subtitle</span><span class="p">:</span> <span class="n">A</span> <span class="n">blogging</span> <span class="n">framework</span> <span class="k">for</span> <span class="n">hackers</span><span class="o">.</span>
+</span><span class='line'><span class="ss">author</span><span class="p">:</span> <span class="no">Your</span> <span class="no">Name</span>
+</span><span class='line'><span class="ss">simple_search</span><span class="p">:</span> <span class="ss">https</span><span class="p">:</span><span class="sr">//</span><span class="n">www</span><span class="o">.</span><span class="n">google</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">search</span>
+</span><span class='line'><span class="ss">description</span><span class="p">:</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Default date format is &quot;ordinal&quot; (resulting in &quot;July 22nd 2007&quot;)</span>
+</span><span class='line'><span class="c1"># You can customize the format as defined in</span>
+</span><span class='line'><span class="c1"># http://www.ruby-doc.org/core-1.9.2/Time.html#method-i-strftime</span>
+</span><span class='line'><span class="c1"># Additionally, %o will give you the ordinal representation of the day</span>
+</span><span class='line'><span class="ss">date_format</span><span class="p">:</span> <span class="s2">&quot;ordinal&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># RSS / Email (optional) subscription links (change if using something like Feedburner)</span>
+</span><span class='line'><span class="ss">subscribe_rss</span><span class="p">:</span> <span class="sr">/atom.xml</span>
+</span><span class='line'><span class="sr">subscribe_email:</span>
+</span><span class='line'><span class="sr"># RSS feeds can list your email address if you like</span>
+</span><span class='line'><span class="sr">email:</span>
+</span><span class='line'>
+</span><span class='line'><span class="sr"># ----------------------- #</span>
+</span><span class='line'><span class="sr">#    Jekyll &amp; Plugins     #</span>
+</span><span class='line'><span class="sr"># ----------------------- #</span>
+</span><span class='line'>
+</span><span class='line'><span class="sr"># If publishing to a subdirectory as in http:/</span><span class="o">/</span><span class="n">site</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">project</span> <span class="n">set</span> <span class="s1">&#39;root: /project&#39;</span>
+</span><span class='line'><span class="ss">root</span><span class="p">:</span> <span class="sr">/</span>
+</span><span class='line'><span class="sr">permalink: /</span><span class="n">blog</span><span class="o">/</span><span class="ss">:year</span><span class="o">/</span><span class="ss">:month</span><span class="o">/</span><span class="ss">:day</span><span class="o">/</span><span class="ss">:title</span><span class="o">/</span>
+</span><span class='line'><span class="ss">source</span><span class="p">:</span> <span class="n">source</span>
+</span><span class='line'><span class="ss">destination</span><span class="p">:</span> <span class="kp">public</span>
+</span><span class='line'><span class="ss">plugins</span><span class="p">:</span> <span class="n">plugins</span>
+</span><span class='line'><span class="ss">code_dir</span><span class="p">:</span> <span class="n">downloads</span><span class="o">/</span><span class="n">code</span>
+</span><span class='line'><span class="ss">category_dir</span><span class="p">:</span> <span class="n">blog</span><span class="o">/</span><span class="n">categories</span>
+</span><span class='line'><span class="ss">markdown</span><span class="p">:</span> <span class="n">rdiscount</span>
+</span><span class='line'><span class="ss">rdiscount</span><span class="p">:</span>
+</span><span class='line'>  <span class="ss">extensions</span><span class="p">:</span>
+</span><span class='line'>    <span class="o">-</span> <span class="n">autolink</span>
+</span><span class='line'>    <span class="o">-</span> <span class="n">footnotes</span>
+</span><span class='line'>    <span class="o">-</span> <span class="n">smart</span>
+</span><span class='line'><span class="ss">highlighter</span><span class="p">:</span> <span class="n">pygments</span> <span class="c1"># default python pygments have been replaced by pygments.rb</span>
+</span><span class='line'>
+</span><span class='line'><span class="ss">paginate</span><span class="p">:</span> <span class="mi">10</span>          <span class="c1"># Posts per page on the blog index</span>
+</span><span class='line'><span class="ss">paginate_path</span><span class="p">:</span> <span class="s2">&quot;posts/:num&quot;</span>  <span class="c1"># Directory base for pagination URLs eg. /posts/2/</span>
+</span><span class='line'><span class="ss">recent_posts</span><span class="p">:</span> <span class="mi">5</span>       <span class="c1"># Posts in the sidebar Recent Posts section</span>
+</span><span class='line'><span class="ss">excerpt_link</span><span class="p">:</span> <span class="s2">&quot;Read on →&quot;</span>  <span class="c1"># &quot;Continue reading&quot; link text at the bottom of excerpted articles</span>
+</span><span class='line'><span class="ss">excerpt_separator</span><span class="p">:</span> <span class="s2">&quot;&lt;!--more--&gt;&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="ss">titlecase</span><span class="p">:</span> <span class="kp">true</span>       <span class="c1"># Converts page and post titles to titlecase</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># list each of the sidebar modules you want to include, in the order you want them to appear.</span>
+</span><span class='line'><span class="c1"># To add custom asides, create files in /source/_includes/custom/asides/ and add them to the list like &#39;custom/asides/custom_aside_name.html&#39;</span>
+</span><span class='line'><span class="ss">default_asides</span><span class="p">:</span> <span class="o">[</span><span class="n">asides</span><span class="o">/</span><span class="n">recent_posts</span><span class="o">.</span><span class="n">html</span><span class="p">,</span> <span class="n">asides</span><span class="o">/</span><span class="n">github</span><span class="o">.</span><span class="n">html</span><span class="p">,</span> <span class="n">asides</span><span class="o">/</span><span class="n">delicious</span><span class="o">.</span><span class="n">html</span><span class="p">,</span> <span class="n">asides</span><span class="o">/</span><span class="n">pinboard</span><span class="o">.</span><span class="n">html</span><span class="p">,</span> <span class="n">asides</span><span class="o">/</span><span class="n">googleplus</span><span class="o">.</span><span class="n">html</span><span class="o">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Each layout uses the default asides, but they can have their own asides instead. Simply uncomment the lines below</span>
+</span><span class='line'><span class="c1"># and add an array with the asides you want to use.</span>
+</span><span class='line'><span class="c1"># blog_index_asides:</span>
+</span><span class='line'><span class="c1"># post_asides:</span>
+</span><span class='line'><span class="c1"># page_asides:</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># ----------------------- #</span>
+</span><span class='line'><span class="c1">#   3rd Party Settings    #</span>
+</span><span class='line'><span class="c1"># ----------------------- #</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Github repositories</span>
+</span><span class='line'><span class="ss">github_user</span><span class="p">:</span>
+</span><span class='line'><span class="ss">github_repo_count</span><span class="p">:</span> <span class="mi">0</span>
+</span><span class='line'><span class="ss">github_show_profile_link</span><span class="p">:</span> <span class="kp">true</span>
+</span><span class='line'><span class="ss">github_skip_forks</span><span class="p">:</span> <span class="kp">true</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Twitter</span>
+</span><span class='line'><span class="ss">twitter_user</span><span class="p">:</span>
+</span><span class='line'><span class="ss">twitter_tweet_button</span><span class="p">:</span> <span class="kp">true</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Google +1</span>
+</span><span class='line'><span class="ss">google_plus_one</span><span class="p">:</span> <span class="kp">false</span>
+</span><span class='line'><span class="ss">google_plus_one_size</span><span class="p">:</span> <span class="n">medium</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Google Plus Profile</span>
+</span><span class='line'><span class="c1"># Hidden: No visible button, just add author information to search results</span>
+</span><span class='line'><span class="ss">googleplus_user</span><span class="p">:</span>
+</span><span class='line'><span class="ss">googleplus_hidden</span><span class="p">:</span> <span class="kp">false</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Pinboard</span>
+</span><span class='line'><span class="ss">pinboard_user</span><span class="p">:</span>
+</span><span class='line'><span class="ss">pinboard_count</span><span class="p">:</span> <span class="mi">3</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Delicious</span>
+</span><span class='line'><span class="ss">delicious_user</span><span class="p">:</span>
+</span><span class='line'><span class="ss">delicious_count</span><span class="p">:</span> <span class="mi">3</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Disqus Comments</span>
+</span><span class='line'><span class="ss">disqus_short_name</span><span class="p">:</span>
+</span><span class='line'><span class="ss">disqus_show_comment_count</span><span class="p">:</span> <span class="kp">false</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Google Analytics</span>
+</span><span class='line'><span class="ss">google_analytics_tracking_id</span><span class="p">:</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Facebook Like</span>
+</span><span class='line'><span class="ss">facebook_like</span><span class="p">:</span> <span class="kp">false</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里，笔者稍微简单修改之后的界面，来看看效果如何：</p>
+
+<p><img src="http://alighters.github.io/imgs/blog_view.png" alt="效果.png" />
+有木有感觉异常简单呢？</p>
+
+<h2>参考资料</h2>
+
+<ul>
+<li><a href="http://webdesign.tutsplus.com/tutorials/getting-started-with-octopress--webdesign-11442">Getting Started with Octopress</a></li>
+<li><a href="http://octopress.org/docs/setup/">Octopress Setup</a></li>
+</ul>
+
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/">/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2016-04-23T22:00:00+08:00'><span class='date'>2016-04-23</span> <span class='time'>10:00 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ruby/'>ruby</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/04/15/dagger2-indepth-understanding/" title="Previous Post: Dagger2深入理解">&laquo; Dagger2深入理解</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/" title="Next Post: SimpleArrayMap源码解析">SimpleArrayMap源码解析 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

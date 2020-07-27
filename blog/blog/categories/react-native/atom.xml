@@ -1,0 +1,903 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: React-native | alighters]]></title>
+  <link href="http://alighters.github.io/blog/blog/categories/react-native/atom.xml" rel="self"/>
+  <link href="http://alighters.github.io/blog/"/>
+  <updated>2020-07-28T00:22:56+08:00</updated>
+  <id>http://alighters.github.io/blog/</id>
+  <author>
+    <name><![CDATA[alighters]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[RN 通信]]></title>
+    <link href="http://alighters.github.io/blog/blog/2018/06/28/react-native-message-theory/"/>
+    <updated>2018-06-28T16:28:00+08:00</updated>
+    <id>http://alighters.github.io/blog/blog/2018/06/28/react-native-message-theory</id>
+    <content type="html"><![CDATA[<h2>JS 桥</h2>
+
+<p>Android: Webkit 的 JavaScriptCore
+ios: 自带的 javascriptcore</p>
+
+<p>在 Android 的代码，其提供了一个 CatalystInstance 的接口，来做 JS 与 Native 的高度抽象的接口：</p>
+
+<!-- more -->
+
+
+<pre><code class="java">
+public interface CatalystInstance
+    extends MemoryPressureListener, JSInstance {
+  void runJSBundle();
+
+  // Returns the status of running the JS bundle; waits for an answer if runJSBundle is running
+  boolean hasRunJSBundle();
+
+  /**
+   * Return the source URL of the JS Bundle that was run, or {@code null} if no JS
+   * bundle has been run yet.
+   */
+  @Nullable String getSourceURL();
+
+  // This is called from java code, so it won't be stripped anyway, but proguard will rename it,
+  // which this prevents.
+  @Override @DoNotStrip
+  void invokeCallback(
+      int callbackID,
+      NativeArray arguments);
+  @DoNotStrip
+  void callFunction(
+      String module,
+      String method,
+      NativeArray arguments);
+  /**
+   * Destroys this catalyst instance, waiting for any other threads in ReactQueueConfiguration
+   * (besides the UI thread) to finish running. Must be called from the UI thread so that we can
+   * fully shut down other threads.
+   */
+  void destroy();
+  boolean isDestroyed();
+
+  /**
+   * Initialize all the native modules
+   */
+  @VisibleForTesting
+  void initialize();
+
+  ReactQueueConfiguration getReactQueueConfiguration();
+
+  &lt;T extends JavaScriptModule&gt; T getJSModule(Class&lt;T&gt; jsInterface);
+  &lt;T extends NativeModule&gt; boolean hasNativeModule(Class&lt;T&gt; nativeModuleInterface);
+  &lt;T extends NativeModule&gt; T getNativeModule(Class&lt;T&gt; nativeModuleInterface);
+  &lt;T extends JSIModule&gt; T getJSIModule(Class&lt;T&gt; jsiModuleInterface);
+  Collection&lt;NativeModule&gt; getNativeModules();
+
+  /**
+   * This method permits a CatalystInstance to extend the known
+   * Native modules. This provided registry contains only the new modules to load.
+   */
+  void extendNativeModules(NativeModuleRegistry modules);
+
+  /**
+   * Adds a idle listener for this Catalyst instance. The listener will receive notifications
+   * whenever the bridge transitions from idle to busy and vice-versa, where the busy state is
+   * defined as there being some non-zero number of calls to JS that haven't resolved via a
+   * onBatchCompleted call. The listener should be purely passive and not affect application logic.
+   */
+  void addBridgeIdleDebugListener(NotThreadSafeBridgeIdleDebugListener listener);
+
+  /**
+   * Removes a NotThreadSafeBridgeIdleDebugListener previously added with
+   * {@link #addBridgeIdleDebugListener}
+   */
+  void removeBridgeIdleDebugListener(NotThreadSafeBridgeIdleDebugListener listener);
+
+  /** This method registers the file path of an additional JS segment by its ID. */
+  void registerSegment(int segmentId, String path);
+
+  @VisibleForTesting
+  void setGlobalVariable(String propName, String jsonValue);
+
+  /**
+   * Get the C pointer (as a long) to the JavaScriptCore context associated with this instance.
+   *
+   * &lt;p&gt;Use the following pattern to ensure that the JS context is not cleared while you are using
+   * it: JavaScriptContextHolder jsContext = reactContext.getJavaScriptContextHolder()
+   * synchronized(jsContext) { nativeThingNeedingJsContext(jsContext.get()); }
+   */
+  JavaScriptContextHolder getJavaScriptContextHolder();
+
+  void addJSIModules(List&lt;JSIModuleHolder&gt; jsiModules);
+}
+</code></pre>
+
+<p>其中主要有 NativeModule 和 JSModule 获取的方法，并调用 JS 侧方法 invokeCallback 和 callFunction 方法。</p>
+
+<h2>执行流程</h2>
+
+<h4>1.构建 ReactNativeHost</h4>
+
+<p>在 ReactNativeHost 中的 getPackages 方法中，我们需要传递实现的 ReactPackage 接口，接口中则定义了实现的 NativeModule 集合和 ViewManager 的集合。</p>
+
+<h4>2.创建 ReactInstanceManger</h4>
+
+<p>ReactNativeHost 是在 application 中提供获取的，而通过 ReactNativeHost 可以获取到 ReactInstanceManager 类，在创建 ReactInstanceManager 的过程中，会得到所有的 ReactPackage，将其保存在 ReactInstanceManager 类中。</p>
+
+<blockquote><p>这里的 ReactPackage 的获取，会优先添加 CoreModulesPackage，其提供了 Android 基础的 Module功能，如 AndroidInfoModule、DeviceEventManageModule、UIManagerModule等。</p>
+
+<p>这里的 UIManagerModule，则是来负责 UI 视图创建的 View 集合，并接受来自 View 的命令来操作更新 View。</p></blockquote>
+
+<h4>3.ReactRootView 执行 startReactApplication</h4>
+
+<p>在一个 RN 的 activity 中，其会在 onCreate 方法中，执行 ReactRootView 的创建工作，之后便是根据创建好的 ReactInstanceManager，来执行 ReactRootView 的 startReactApplication 的方法。</p>
+
+<p>其中会调用 ReactInstanceManager 的 createReactContentInBackground 方法。这里会根据特定的 JS 来源，在一个新的线程执行 createReactContext 方法来创建一个ReactApplicationContext。</p>
+
+<h4>4.createReactContext</h4>
+
+<p>此方法中，首先会处理之前的 ReactPackages 来生成一个 NativeModuleRegistry，其是用来管理 NativeModule 并提供获取调用的功能。</p>
+
+<p>紧接着，便是利用 CatalystInstanceImpl Builder 构造一个 CatalystInstance。在 CatalystInstanceImpl 的初始化方法中，其会利用传递过来的参数，调用 JNI 方法 initializeBridge，其会执行桥的初始化操作，如获取 NativeModule 至 JNI 中的 ModuleRegistry 中。</p>
+
+<p>之后便是调用 CatalystInstance 的 runJSBundle 方法。其会执行 JSBundleLoader 的 loadScript 方法，这里又会调用回 CatalystInstanceImpl 中的几个提供的相关从 jni 中 load JS 内容的方法。这里主要来完成 JS 内容的加载。</p>
+
+<h4>5.setupReactContext</h4>
+
+<p>之后，在 NativeModulesQueueThread 上执行 setupReactContext 的方法，这里会执行 CatalyInstance 的 initalize，主要内容则是初始化所有的 NativeModule。</p>
+
+<p>随之，便是调用 attachRootViewToInstance 方法，其参数为 ReactRootView 和 CatalystInstance。其中最主要的内容便是调用 ReactRootView 的 invokeJsEntryPoint :</p>
+
+<pre><code class="java">  /*package */ void invokeJSEntryPoint() {
+    if (mJSEntryPoint == null) {
+      defaultJSEntryPoint();
+    } else {
+      mJSEntryPoint.run();
+    }
+  }
+</code></pre>
+
+<p>其中 defaultJsEntryPoint 方法，则是调用</p>
+
+<pre><code class="java">  /**
+   * Calls the default entry point into JS which is AppRegistry.runApplication()
+   */
+  private void defaultJSEntryPoint() {
+      Systrace.beginSection(TRACE_TAG_REACT_JAVA_BRIDGE, "ReactRootView.runApplication");
+      try {
+        if (mReactInstanceManager == null || !mIsAttachedToInstance) {
+          return;
+        }
+
+        ReactContext reactContext = mReactInstanceManager.getCurrentReactContext();
+        if (reactContext == null) {
+          return;
+        }
+
+        CatalystInstance catalystInstance = reactContext.getCatalystInstance();
+
+        WritableNativeMap appParams = new WritableNativeMap();
+        appParams.putDouble("rootTag", getRootViewTag());
+        @Nullable Bundle appProperties = getAppProperties();
+        if (appProperties != null) {
+          appParams.putMap("initialProps", Arguments.fromBundle(appProperties));
+        }
+        if (getUIManagerType() == FABRIC) {
+          appParams.putBoolean("fabric", true);
+        }
+
+        mShouldLogContentAppeared = true;
+
+        String jsAppModuleName = getJSModuleName();
+        catalystInstance.getJSModule(AppRegistry.class).runApplication(jsAppModuleName, appParams);
+      } finally {
+        Systrace.endSection(TRACE_TAG_REACT_JAVA_BRIDGE);
+      }
+  }
+</code></pre>
+
+<p>可以看出，这里的关键内容便是将 rootTag、initialProps 参数内容，放置在 appParams 中，调用 JS 侧的对象 AppRegistry，并调用其 runApplication 方法，来完成 JS 端内容的调用。</p>
+
+<h2>JS 调用 Native</h2>
+
+<p>将 Native 的方法提供给 JS 来调用，</p>
+
+<h3>1.步骤</h3>
+
+<ul>
+<li>1）Native 端定义实现 NativeModule 接口</li>
+<li>2）将此 NativeModule 接口添加至 ReactPackage 中</li>
+<li>3）JS 端在 NativeModule.js 中获取到指定的 Module 对象，根据提供的方法进行调用。</li>
+</ul>
+
+
+<h3>2.实现</h3>
+
+<h4>1.获取 Native 对象</h4>
+
+<p>在获取一个 Native 端提供的类、对象，通常系统的，我们都是通过 &lsquo;react-native&rsquo; 中获取，而我们自定义的模块则需要从 NativeModule 中获取，以 ToastAndroid 为例：</p>
+
+<pre><code class="javascript">import {
+  ToastAndroid,
+} from 'react-native';
+</code></pre>
+
+<p>其中，ToastAndroid 对应着 ToastAndroid.android.js，其文件中的 ToastAndroid 内容则是 RCTToastAndroid，其获取方式如下：</p>
+
+<pre><code class="javascript">const { ToastAndroid} = require('NativeModule')
+const RCTToastAndroid = require('NativeModules').ToastAndroid;
+</code></pre>
+
+<h4>2.NativeModule 属性对象的赋值</h4>
+
+<p>在 NativeModule.js 中，NativeModule 对象的生成过程中，其已经调用了 NativeModule 的 genModule 方法，生成了相应的 Module，并赋值了 NativeModule 对象。</p>
+
+<p>其中 genModule 的参数为 ModuleConfig 和 moduleID 的数字类型值。ModuleConfig 的定义如下：</p>
+
+<pre><code class="javascript">type ModuleConfig = [
+  string, /* name */
+  ?Object, /* constants */
+  Array&lt;string&gt;, /* functions */
+  Array&lt;number&gt;, /* promise method IDs */
+  Array&lt;number&gt;, /* sync method IDs */
+];
+</code></pre>
+
+<p>它包含了一个模块的名称、常量值、方法。其中 promise 及 sync 的方法采用方法数组索引来表示。
+另外，moduleID 为 module 数组中的索引值。</p>
+
+<p>而调用 genModule 方法，则是根据此 config 信息，生成一个对应的 module 对象：</p>
+
+<pre><code class="javascript">  const [moduleName, constants, methods, promiseMethods, syncMethods] = config;
+
+  if (!constants &amp;&amp; !methods) {
+    // Module contents will be filled in lazily later
+    return { name: moduleName };
+  }
+
+  const module = {};
+  methods &amp;&amp; methods.forEach((methodName, methodID) =&gt; {
+    const isPromise = promiseMethods &amp;&amp; arrayContains(promiseMethods, methodID);
+    const isSync = syncMethods &amp;&amp; arrayContains(syncMethods, methodID);
+    invariant(!isPromise || !isSync, 'Cannot have a method that is both async and a sync hook');
+    const methodType = isPromise ? 'promise' : isSync ? 'sync' : 'async';
+    module[methodName] = genMethod(moduleID, methodID, methodType);
+  });
+  Object.assign(module, constants);
+
+  if (__DEV__) {
+    BatchedBridge.createDebugLookup(moduleID, moduleName, methods);
+  }
+
+  return { name: moduleName, module };
+</code></pre>
+
+<p>若是存在方法值，则会遍历方法，调用 genMethod 来生成方法对应的信息：</p>
+
+<p>之后便是将其赋值给 NativeModule:</p>
+
+<pre><code class="javascript">const info = genModule(config, moduleID);
+if (!info) {
+  return;
+}
+
+if (info.module) {
+  NativeModules[info.name] = info.module;
+}
+</code></pre>
+
+<h4>3.__fbBatchedBridgeConfig 的生成及赋值</h4>
+
+<p>在上述2的步骤中，其中 config 数组信息对应着 bridgeConfig 的属性 remoteModuleConfig。而 bridgeConfig 则是 global.__fbBatchedBridgeConfig 的值。</p>
+
+<p>这个值则是在 JS 引擎的 ProxyExecutor 执行 loadApplicationScript 中进行赋值的:</p>
+
+<pre><code>void ProxyExecutor::loadApplicationScript(
+    std::unique_ptr&lt;const JSBigString&gt;,
+    std::string sourceURL) {
+
+  folly::dynamic nativeModuleConfig = folly::dynamic::array;
+
+  {
+    SystraceSection s("collectNativeModuleDescriptions");
+    auto moduleRegistry = m_delegate-&gt;getModuleRegistry();
+    for (const auto&amp; name : moduleRegistry-&gt;moduleNames()) {
+      auto config = moduleRegistry-&gt;getConfig(name);
+      nativeModuleConfig.push_back(config ? config-&gt;config : nullptr);
+    }
+  }
+
+  folly::dynamic config =
+    folly::dynamic::object
+    ("remoteModuleConfig", std::move(nativeModuleConfig));
+
+  {
+    SystraceSection t("setGlobalVariable");
+    setGlobalVariable(
+      "__fbBatchedBridgeConfig",
+      folly::make_unique&lt;JSBigStdString&gt;(folly::toJson(config)));
+  }
+
+  static auto loadApplicationScript =
+    jni::findClassStatic(EXECUTOR_BASECLASS)-&gt;getMethod&lt;void(jstring)&gt;("loadApplicationScript");
+
+  // The proxy ignores the script data passed in.
+
+  loadApplicationScript(
+    m_executor.get(),
+    jni::make_jstring(sourceURL).get());
+  // We can get pending calls here to native but the queue will be drained when
+  // we launch the application.
+}
+</code></pre>
+
+<p>这里利用 ExecutorDelegate 得到 ModuleRegistry，通过其获取到 moduleNames，进行遍历获取到每个 module 对应的 config 信息，将这些 config 信息放置在 nativeModuleConfig 数组中，并将其封装为 remoteModuleConfig 对象，调用 setGlobalVariable 方法，将此对象存放至名为 __fbBatchedBridgeConfig 的变量中。</p>
+
+<h4>4.JNI NativeModule 的注册</h4>
+
+<p>在上述过程中，就有个问题，NativeModule 是如何存在于 ModuleRegistry 中的?</p>
+
+<p>首先暴露 JNI 相关的方法是在 OnLoad.cpp 的 JNI_OnLoad 方法中：</p>
+
+<pre><code>        extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
+          return initialize(vm, [] {
+              gloginit::initialize();
+              JSCJavaScriptExecutorHolder::registerNatives();
+              ProxyJavaScriptExecutorHolder::registerNatives();
+              CatalystInstanceImpl::registerNatives();
+              CxxModuleWrapperBase::registerNatives();
+              CxxModuleWrapper::registerNatives();
+              JCxxCallbackImpl::registerNatives();
+              NativeArray::registerNatives();
+              ReadableNativeArray::registerNatives();
+              WritableNativeArray::registerNatives();
+              NativeMap::registerNatives();
+              ReadableNativeMap::registerNatives();
+              WritableNativeMap::registerNatives();
+              ReadableNativeMapKeySetIterator::registerNatives();
+
+#ifdef WITH_INSPECTOR
+              JInspector::registerNatives();
+#endif
+          });
+</code></pre>
+
+<p>其调用了 CatalystInstanceImpl::registerNatives() 方法：</p>
+
+<pre><code>
+void CatalystInstanceImpl::registerNatives() {
+  registerHybrid({
+                   makeNativeMethod("initHybrid", CatalystInstanceImpl::initHybrid),
+                   makeNativeMethod("initializeBridge",
+                                    CatalystInstanceImpl::initializeBridge),
+                   makeNativeMethod("jniExtendNativeModules",
+                                    CatalystInstanceImpl::extendNativeModules),
+                   makeNativeMethod("jniSetSourceURL",
+                                    CatalystInstanceImpl::jniSetSourceURL),
+                   makeNativeMethod("jniRegisterSegment",
+                                    CatalystInstanceImpl::jniRegisterSegment),
+                   makeNativeMethod("jniLoadScriptFromAssets",
+                                    CatalystInstanceImpl::jniLoadScriptFromAssets),
+                   makeNativeMethod("jniLoadScriptFromFile",
+                                    CatalystInstanceImpl::jniLoadScriptFromFile),
+                   makeNativeMethod("jniCallJSFunction",
+                                    CatalystInstanceImpl::jniCallJSFunction),
+                   makeNativeMethod("jniCallJSCallback",
+                                    CatalystInstanceImpl::jniCallJSCallback),
+                   makeNativeMethod("setGlobalVaeeriable",
+                                    CatalystInstanceImpl::setGlobalVariable),
+                   makeNativeMethod("getJavaScriptContext",
+                                    CatalystInstanceImpl::getJavaScriptContext),
+                   makeNativeMethod("jniHandleMemoryPressure",
+                                    CatalystInstanceImpl::handleMemoryPressure),
+                 });
+
+  JNativeRunnable::registerNatives();
+}
+</code></pre>
+
+<p>可以看到 CatalystInstanceImpl::initializeBridge 方法绑定为 initializeBridge JNI 方法，而此 JNI 方法的调用则是在初始化 CatalystInstanceImpl 的构造函数中：</p>
+
+<pre><code class="java">  private CatalystInstanceImpl(
+      final ReactQueueConfigurationSpec reactQueueConfigurationSpec,
+      final JavaScriptExecutor jsExecutor,
+      final NativeModuleRegistry nativeModuleRegistry,
+      final JSBundleLoader jsBundleLoader,
+      NativeModuleCallExceptionHandler nativeModuleCallExceptionHandler) {
+    Log.d(ReactConstants.TAG, "Initializing React Xplat Bridge.");
+    mHybridData = initHybrid();
+
+    mReactQueueConfiguration = ReactQueueConfigurationImpl.create(
+        reactQueueConfigurationSpec,
+        new NativeExceptionHandler());
+    mBridgeIdleListeners = new CopyOnWriteArrayList&lt;&gt;();
+    mNativeModuleRegistry = nativeModuleRegistry;
+    mJSModuleRegistry = new JavaScriptModuleRegistry();
+    mJSBundleLoader = jsBundleLoader;
+    mNativeModuleCallExceptionHandler = nativeModuleCallExceptionHandler;
+    mNativeModulesQueueThread = mReactQueueConfiguration.getNativeModulesQueueThread();
+    mTraceListener = new JSProfilerTraceListener(this);
+
+    Log.d(ReactConstants.TAG, "Initializing React Xplat Bridge before initializeBridge");
+    initializeBridge(
+      new BridgeCallback(this),
+      jsExecutor,
+      mReactQueueConfiguration.getJSQueueThread(),
+      mNativeModulesQueueThread,
+      mNativeModuleRegistry.getJavaModules(this),
+      mNativeModuleRegistry.getCxxModules());
+    Log.d(ReactConstants.TAG, "Initializing React Xplat Bridge after initializeBridge");
+
+    mJavaScriptContextHolder = new JavaScriptContextHolder(getJavaScriptContext());
+  }
+</code></pre>
+
+<p>其中调用的 initializeBridge 调用的 Native 方法如下：</p>
+
+<pre><code>void CatalystInstanceImpl::initializeBridge(
+  jni::alias_ref &lt;ReactCallback::javaobject&gt; callback,
+  // This executor is actually a factory holder.
+  JavaScriptExecutorHolder *jseh,
+  jni::alias_ref &lt;JavaMessageQueueThread::javaobject&gt; jsQueue,
+  jni::alias_ref &lt;JavaMessageQueueThread::javaobject&gt; nativeModulesQueue,
+  jni::alias_ref &lt;jni::JCollection&lt;JavaModuleWrapper::javaobject&gt;::javaobject&gt; javaModules,
+  jni::alias_ref &lt;jni::JCollection&lt;ModuleHolder::javaobject&gt;::javaobject&gt; cxxModules) {
+
+  moduleMessageQueue_ = std::make_shared&lt;JMessageQueueThread&gt;(nativeModulesQueue);
+
+
+  moduleRegistry_ = std::make_shared&lt;ModuleRegistry&gt;(
+    buildNativeModuleList(
+      std::weak_ptr&lt;Instance&gt;(instance_),
+      javaModules,
+      cxxModules,
+      moduleMessageQueue_));
+
+  instance_-&gt;initializeBridge(
+    folly::make_unique&lt;JInstanceCallback&gt;(
+      callback,
+      moduleMessageQueue_),
+    jseh-&gt;getExecutorFactory(),
+    folly::make_unique&lt;JMessageQueueThread&gt;(jsQueue),
+    moduleRegistry_);
+}
+</code></pre>
+
+<p>其中实现初始化了 moduleRegistry，这里调用了 buildNativeModuleList 方法，其对应这 ModuleRegistryBuilder 类：</p>
+
+<pre><code>
+std::vector &lt;std::unique_ptr&lt;NativeModule&gt;&gt; buildNativeModuleList(
+  std::weak_ptr &lt;Instance&gt; winstance,
+  jni::alias_ref &lt;jni::JCollection&lt;JavaModuleWrapper::javaobject&gt;::javaobject&gt; javaModules,
+  jni::alias_ref &lt;jni::JCollection&lt;ModuleHolder::javaobject&gt;::javaobject&gt; cxxModules,
+  std::shared_ptr &lt;MessageQueueThread&gt; moduleMessageQueue) {
+  std::vector &lt;std::unique_ptr&lt;NativeModule&gt;&gt; modules;
+  if (javaModules) {
+    for (const auto &amp;jm : *javaModules) {
+      modules.emplace_back(folly::make_unique&lt;JavaNativeModule&gt;(
+        winstance, jm, moduleMessageQueue));
+    }
+  }
+  if (cxxModules) {
+    for (const auto &amp;cm : *cxxModules) {
+      modules.emplace_back(folly::make_unique&lt;CxxNativeModule&gt;(
+        winstance, cm-&gt;getName(), cm-&gt;getProvider(), moduleMessageQueue));
+    }
+  }
+  return modules;
+}
+</code></pre>
+
+<p>这里则会遍历 javaModules 和延迟加载的 cxxModules，全部存放于类型为 NativeModule 的数组中，由此得到 ModuleRegistry 中，这样便可生成 config 信息：</p>
+
+<pre><code>folly::Optional &lt;ModuleConfig&gt; ModuleRegistry::getConfig(const std::string &amp;name) {
+  SystraceSection s("ModuleRegistry::getConfig", "module", name);
+
+  // Initialize modulesByName_
+  if (modulesByName_.empty() &amp;&amp; !modules_.empty()) {
+    moduleNames();
+  }
+
+  auto it = modulesByName_.find(name);
+
+  if (it == modulesByName_.end()) {
+    if (unknownModules_.find(name) != unknownModules_.end()) {
+      return nullptr;
+    }
+    if (!moduleNotFoundCallback_ ||
+        !moduleNotFoundCallback_(name) ||
+        (it = modulesByName_.find(name)) == modulesByName_.end()) {
+      unknownModules_.insert(name);
+      return nullptr;
+    }
+  }
+  size_t index = it-&gt;second;
+
+  CHECK(index &lt; modules_.size());
+  NativeModule *module = modules_[index].get();
+
+  // string name, object constants, array methodNames (methodId is index), [array promiseMethodIds], [array syncMethodIds]
+  folly::dynamic config = folly::dynamic::array(name);
+
+  {
+    SystraceSection s_("getConstants");
+    config.push_back(module-&gt;getConstants());
+  }
+
+  {
+    SystraceSection s_("getMethods");
+    std::vector &lt;MethodDescriptor&gt; methods = module-&gt;getMethods();
+
+    folly::dynamic methodNames = folly::dynamic::array;
+    folly::dynamic promiseMethodIds = folly::dynamic::array;
+    folly::dynamic syncMethodIds = folly::dynamic::array;
+
+    for (auto &amp;descriptor : methods) {
+      // TODO: #10487027 compare tags instead of doing string comparison?
+      methodNames.push_back(std::move(descriptor.name));
+      if (descriptor.type == "promise") {
+        promiseMethodIds.push_back(methodNames.size() - 1);
+      } else if (descriptor.type == "sync") {
+        syncMethodIds.push_back(methodNames.size() - 1);
+      }
+    }
+
+    if (!methodNames.empty()) {
+      config.push_back(std::move(methodNames));
+      if (!promiseMethodIds.empty() || !syncMethodIds.empty()) {
+        config.push_back(std::move(promiseMethodIds));
+        if (!syncMethodIds.empty()) {
+          config.push_back(std::move(syncMethodIds));
+        }
+      }
+    }
+  }
+
+  if (config.size() == 2 &amp;&amp; config[1].empty()) {
+    // no constants or methods
+    return nullptr;
+  } else {
+    return ModuleConfig{index, config};
+  }
+}
+</code></pre>
+
+<p>其根据一个 name 值，从 modules 中获取到指定的 module，进行读取里面的值，得到 ModuleConfig 信息。</p>
+
+<h4>5.调用方法的暴露</h4>
+
+<p>这里提供了两个方法，来提供调用 Native 方法：</p>
+
+<pre><code>void ModuleRegistry::callNativeMethod(unsigned int moduleId, unsigned int methodId,
+                                      folly::dynamic &amp;&amp;params, int callId) {
+  if (moduleId &gt;= modules_.size()) {
+    throw std::runtime_error(
+      folly::to&lt;std::string&gt;("moduleId ", moduleId, " out of range [0..", modules_.size(),
+                             ")"));
+  }
+  modules_[moduleId]-&gt;invoke(methodId, std::move(params), callId);
+}
+
+MethodCallResult
+ModuleRegistry::callSerializableNativeHook(unsigned int moduleId, unsigned int methodId,
+                                           folly::dynamic &amp;&amp;params) {
+  if (moduleId &gt;= modules_.size()) {
+    throw std::runtime_error(
+      folly::to&lt;std::string&gt;("moduleId ", moduleId, "out of range [0..", modules_.size(),
+                             ")"));
+  }
+  return modules_[moduleId]-&gt;callSerializableNativeHook(methodId, std::move(params));
+}
+</code></pre>
+
+<p>这两个方法执行的是 module 对应的方法，对应类为 CxxNativeModule:</p>
+
+<pre><code>void
+CxxNativeModule::invoke(unsigned int reactMethodId, folly::dynamic &amp;&amp;params, int callId) {
+  if (reactMethodId &gt;= methods_.size()) {
+    throw std::invalid_argument(folly::to&lt;std::string&gt;("methodId ", reactMethodId,
+                                                       " out of range [0..",
+                                                       methods_.size(), "]"));
+  }
+  if (!params.isArray()) {
+    throw std::invalid_argument(
+      folly::to&lt;std::string&gt;("method parameters should be array, but are ",
+                             params.typeName()));
+  }
+
+  CxxModule::Callback first;
+  CxxModule::Callback second;
+
+  const auto &amp;method = methods_[reactMethodId];
+
+  if (!method.func) {
+    throw std::runtime_error(folly::to&lt;std::string&gt;("Method ", method.name,
+                                                    " is synchronous but invoked asynchronously"));
+  }
+
+  if (params.size() &lt; method.callbacks) {
+    throw std::invalid_argument(folly::to&lt;std::string&gt;("Expected ", method.callbacks,
+                                                       " callbacks, but only ",
+                                                       params.size(),
+                                                       " parameters provided"));
+  }
+
+  if (method.callbacks == 1) {
+    first = convertCallback(makeCallback(instance_, params[params.size() - 1]));
+  } else if (method.callbacks == 2) {
+    first = convertCallback(makeCallback(instance_, params[params.size() - 2]));
+    second = convertCallback(makeCallback(instance_, params[params.size() - 1]));
+  }
+
+  params.resize(params.size() - method.callbacks);
+
+
+  messageQueueThread_-&gt;runOnQueue(
+    [method, params = std::move(params), first, second, callId]() {
+#ifdef WITH_FBSYSTRACE
+        if (callId != -1) {
+          fbsystrace_end_async_flow(TRACE_TAG_REACT_APPS, "native", callId);
+        }
+#endif
+        SystraceSection s(method.name.c_str());
+        try {
+          method.func(std::move(params), first, second);
+        } catch (const facebook::xplat::JsArgumentException &amp;ex) {
+          throw;
+        } catch (std::exception &amp;e) {
+          LOG(ERROR) &lt;&lt; "std::exception. Method call " &lt;&lt; method.name.c_str() &lt;&lt; " failed: "
+                     &lt;&lt; e.what();
+          std::terminate();
+        } catch (std::string &amp;error) {
+          LOG(ERROR) &lt;&lt; "std::string. Method call " &lt;&lt; method.name.c_str() &lt;&lt; " failed: "
+                     &lt;&lt; error.c_str();
+          std::terminate();
+        } catch (...) {
+          LOG(ERROR) &lt;&lt; "Method call " &lt;&lt; method.name.c_str() &lt;&lt; " failed. unknown error";
+          std::terminate();
+        }
+    });
+}
+</code></pre>
+
+<p>在 invoke 方法中，会解析参数，确定 callback 的数量，之后便是在指定的 MessageQueue 中执行方法的调用。同理：</p>
+
+<pre><code>MethodCallResult
+CxxNativeModule::callSerializableNativeHook(unsigned int hookId, folly::dynamic &amp;&amp;args) {
+  if (hookId &gt;= methods_.size()) {
+    throw std::invalid_argument(
+      folly::to&lt;std::string&gt;("methodId ", hookId, " out of range [0..", methods_.size(),
+                             "]"));
+  }
+
+  const auto &amp;method = methods_[hookId];
+
+  if (!method.syncFunc) {
+    throw std::runtime_error(
+      folly::to&lt;std::string&gt;("Method ", method.name,
+                             " is asynchronous but invoked synchronously"));
+  }
+
+  return method.syncFunc(std::move(args));
+}
+</code></pre>
+
+<p>callSerialiableNativeHook 则是进行方法同步的调用。</p>
+
+<h2>Native 调用 JS</h2>
+
+<p>将 JS 端定义的对象方法来提供给 Native 端调用。</p>
+
+<h3>1.步骤</h3>
+
+<ul>
+<li>1）Native端声明定义一个实现 JavaScriptModule 接口的类</li>
+<li>2) 在 JS 端，实现定义此 Module，并将此对象添加注册至 MessageQueue 中.</li>
+</ul>
+
+
+<p>在 MessageQueue.js 中，提供了两个用来注册 Module 的方法：</p>
+
+<pre><code class="javascript">registerCallableModule(name: string, module: Object) 
+</code></pre>
+
+<p>以及懒加载方法：</p>
+
+<pre><code class="javascript">registerLazyCallableModule(name: string, factory: void =&gt; Object) 
+</code></pre>
+
+<h3>2.实现</h3>
+
+<h4>1.定义 JavaScriptModule</h4>
+
+<p>在 Native 中定义了 <code>JavaScriptModule</code>，代表了在 JS 端定义的 JS 方法。</p>
+
+<p>若需要调用 JS 端的方法时，使用 <code>CatalystInstance</code> 接口的 <code>getJSModule</code> 方法：</p>
+
+<pre><code class="java">&lt;T extends JavaScriptModule&gt; T getJSModule(Class&lt;T&gt; jsInterface);
+</code></pre>
+
+<p>如调用 <code>AppRegistry</code> 的 <code>runApplication</code> 方法：</p>
+
+<pre><code class="java">catalystInstance.getJSModule(AppRegistry.class).runApplication(jsAppModuleName, appParams);
+</code></pre>
+
+<h4>2.调用过程</h4>
+
+<p>获取 JavaScriptModule 的方法，则是在 JavaScriptModuleRegistry 了中，其对 JavaScriptModule 类的获取，做了缓存策略，这里使用了代理调用，来改变其方法的调用。具体便是通过 JavaScriptModuleInvocationHandler 的 invoke 方法，来通过 CatalystInstance 来完成真正 JS 方法的调用：</p>
+
+<pre><code class="java">@Override
+public @Nullable Object invoke(Object proxy, Method method, @Nullable Object[] args) throws Throwable {
+NativeArray jsArgs = args != null
+  ? Arguments.fromJavaArgs(args)
+  : new WritableNativeArray();
+    mCatalystInstance.callFunction(getJSModuleName(), method.getName(), jsArgs);
+    return null;
+}
+</code></pre>
+
+<p>关于 CatalystInstance 在 C 层的实现，对应着 CatalystInstanceImpl.cpp 的类：</p>
+
+<pre><code>void CatalystInstanceImpl::jniCallJSFunction(std::string module, std::string method, NativeArray* arguments) {
+  instance_-&gt;callJSFunction(std::move(module),
+                            std::move(method),
+                            arguments-&gt;consume());
+}
+</code></pre>
+
+<p>instance_ 是指 Instance.cpp 类的实例，会调用到：</p>
+
+<pre><code>void Instance::callJSFunction(std::string &amp;&amp;module, std::string &amp;&amp;method,
+                              folly::dynamic &amp;&amp;params) {
+  callback_-&gt;incrementPendingJSCalls();
+  nativeToJsBridge_-&gt;callFunction(std::move(module), std::move(method),
+                                  std::move(params));
+}
+</code></pre>
+
+<p>其调用的便是 NativeToJsBridge.cpp 的 callFunction 方法：</p>
+
+<pre><code>
+void NativeToJsBridge::callFunction(
+    std::string&amp;&amp; module,
+    std::string&amp;&amp; method,
+    folly::dynamic&amp;&amp; arguments) {
+  int systraceCookie = -1;
+
+    ...
+
+  runOnExecutorQueue([module = std::move(module), method = std::move(method), arguments = std::move(arguments), systraceCookie]
+    (JSExecutor* executor) {
+        ...
+       // This is safe because we are running on the executor's thread: it won't
+      // destruct until after it's been unregistered (which we check above) and
+      // that will happen on this thread
+      executor-&gt;callFunction(module, method, arguments);
+    });
+}
+</code></pre>
+
+<p>而 executor 便指的是 JSCExecutor.cpp 类：</p>
+
+<pre><code> void JSCExecutor::callFunction(const std::string&amp; moduleId, const std::string&amp; methodId, const folly::dynamic&amp; arguments) {
+   SystraceSection s("JSCExecutor::callFunction");
+   // This weird pattern is because Value is not default constructible.
+   // The lambda is inlined, so there's no overhead.
+   auto result = [&amp;] {
+     JSContextLock lock(m_context);
+     try {
+       if (!m_callFunctionReturnResultAndFlushedQueueJS) {
+         bindBridge();
+       }
+       return m_callFunctionReturnFlushedQueueJS-&gt;callAsFunction({
+         Value(m_context, String::createExpectingAscii(m_context, moduleId)),
+         Value(m_context, String::createExpectingAscii(m_context, methodId)),
+         Value::fromDynamic(m_context, std::move(arguments))
+       });
+     } catch (...) {
+       std::throw_with_nested(
+                              std::runtime_error("Error calling " + moduleId + "." + methodId));
+     }
+   }();
+   callNativeModules(std::move(result));
+ }
+</code></pre>
+
+<p>其中的 m_callFunctionReturnResultAndFlushedQueueJS 是在 bindBridge 过程中，从 JS 全局对象 <code>__fbBatchedBridge</code> 中进行获取读到的：</p>
+
+<pre><code> void JSCExecutor::bindBridge() throw(JSException) {
+   SystraceSection s("JSCExecutor::bindBridge");
+   std::call_once(m_bindFlag, [this] {
+     auto global = Object::getGlobalObject(m_context);
+     auto batchedBridgeValue = global.getProperty("__fbBatchedBridge");
+     if (batchedBridgeValue.isUndefined()) {
+       auto requireBatchedBridge = global.getProperty("__fbRequireBatchedBridge");
+       if (!requireBatchedBridge.isUndefined()) {
+         batchedBridgeValue = requireBatchedBridge.asObject().callAsFunction({});
+       }
+       if (batchedBridgeValue.isUndefined()) {
+         throw JSException("Could not get BatchedBridge, make sure your bundle is packaged correctly");
+       }
+     }
+
+     auto batchedBridge = batchedBridgeValue.asObject();
+     m_callFunctionReturnFlushedQueueJS = batchedBridge.getProperty("callFunctionReturnFlushedQueue").asObject();
+     m_invokeCallbackAndReturnFlushedQueueJS = batchedBridge.getProperty("invokeCallbackAndReturnFlushedQueue").asObject();
+     m_flushedQueueJS = batchedBridge.getProperty("flushedQueue").asObject();
+     m_callFunctionReturnResultAndFlushedQueueJS = batchedBridge.getProperty("callFunctionReturnResultAndFlushedQueue").asObject();
+   });
+ }
+</code></pre>
+
+<p>而此 __fbBatchedBridge 的定义则是在 JS 端的 BatchedBridge.js 文件中：</p>
+
+<pre><code class="javascript">
+'use strict';
+
+const MessageQueue = require('MessageQueue');
+
+const BatchedBridge = new MessageQueue();
+
+// Wire up the batched bridge on the global object so that we can call into it.
+// Ideally, this would be the inverse relationship. I.e. the native environment
+// provides this global directly with its script embedded. Then this module
+// would export it. A possible fix would be to trim the dependencies in
+// MessageQueue to its minimal features and embed that in the native runtime.
+
+Object.defineProperty(global, '__fbBatchedBridge', {
+  configurable: true,
+  value: BatchedBridge,
+});
+
+module.exports = BatchedBridge;
+</code></pre>
+
+<p>这里其值则是对应着 MessageQueue，其管理着 JS 端的 function 的注册调用逻辑，其中<code>callFunctionReturnResultAndFlushedQueue</code> ：</p>
+
+<pre><code class="javascript">  callFunctionReturnFlushedQueue(module: string, method: string, args: any[]) {
+    this.__guard(() =&gt; {
+      this.__callFunction(module, method, args);
+    });
+
+    return this.flushedQueue();
+  }
+</code></pre>
+
+<p><code>__callFunction</code> 方法的调用：</p>
+
+<pre><code class="javascript ">__callFunction(module: string, method: string, args: any[]): any {
+ this._lastFlush = new Date().getTime();
+ this._eventLoopStartTime = this._lastFlush;
+ Systrace.beginEvent(`${module}.${method}()`);
+ if (this.__spy) {
+   this.__spy({type: TO_JS, module, method, args});
+ }
+ const moduleMethods = this.getCallableModule(module);
+ invariant(
+   !!moduleMethods,
+   'Module %s is not a registered callable module (calling %s)',
+   module,
+   method,
+ );
+ invariant(
+   !!moduleMethods[method],
+   'Method %s does not exist on module %s',
+   method,
+   module,
+ );
+ const result = moduleMethods[method].apply(moduleMethods, args);
+ Systrace.endEvent();
+ return result;
+}
+</code></pre>
+
+<p>其中的 getCallableModule 则是从 _lazyCallableModules 中进行获取，其注册则是通过 <code>registerCallableModule</code> 方法。以 <code>AppRegistry.js</code> 为例，在其文件的末尾则是调用了 BatchedBridge 进行注册：</p>
+
+<pre><code class="javascript">BatchedBridge.registerCallableModule('AppRegistry', AppRegistry);
+</code></pre>
+]]></content>
+  </entry>
+  
+</feed>

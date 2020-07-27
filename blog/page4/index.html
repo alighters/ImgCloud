@@ -1,0 +1,608 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="最近，看到一些小伙伴想要入门Dagger2，加之最近刚经历了Dagger2的水深火热，在这里针对Dagger2中不同的注解方式，会生成怎样的代码，结合其生成的不同代码，来帮助大家做一些深入的理解。 ">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/page4/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/04/15/dagger2-indepth-understanding/">Dagger2深入理解</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-04-15T00:29:52+00:00'><span class='date'>2016-04-15</span> <span class='time'>12:29 am</span></time>
+        
+           | <a href="/blog/2016/04/15/dagger2-indepth-understanding/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/04/15/dagger2-indepth-understanding/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近，看到一些小伙伴想要入门Dagger2，加之最近刚经历了Dagger2的水深火热，在这里针对Dagger2中不同的注解方式，会生成怎样的代码，结合其生成的不同代码，来帮助大家做一些深入的理解。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/04/15/dagger2-indepth-understanding/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/03/20/rails-deploy-summary/">Rails的部署实践总结</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-03-20T23:05:55+00:00'><span class='date'>2016-03-20</span> <span class='time'>11:05 pm</span></time>
+        
+           | <a href="/blog/2016/03/20/rails-deploy-summary/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/03/20/rails-deploy-summary/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近刚刚实践了一把Rails的自动部署，由于自己对这个一知半解，期间遇到了不少实践性的问题以及概念性的问题，在这里把这些问题都记录下来，以防以后再遇到。文中主要参照<a href="http://www.jianshu.com/p/3417c69a824a">capstrano半自动部署rails程序</a>这篇文章，来按步骤部署。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/03/20/rails-deploy-summary/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/03/02/programmer-look-product/">程序猿看产品开发</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-03-02T23:36:10+00:00'><span class='date'>2016-03-02</span> <span class='time'>11:36 pm</span></time>
+        
+           | <a href="/blog/2016/03/02/programmer-look-product/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/03/02/programmer-look-product/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><img src="http://alighters.github.io/imgs/think.png" alt="Paste_Image.png" /></p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/03/02/programmer-look-product/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/02/29/one-click-collecto-to-github/">一键收藏至Github</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-02-29T22:33:04+00:00'><span class='date'>2016-02-29</span> <span class='time'>10:33 pm</span></time>
+        
+           | <a href="/blog/2016/02/29/one-click-collecto-to-github/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/02/29/one-click-collecto-to-github/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>因本人比较喜欢对一些技术文章进行收藏，并进行整理。像Pocket、Evernote这些工具都可以进行离线收藏，都是很不错的工具，但我就想把这些喜欢的文章，进行收藏整理至github，并且一键提交（顺便还可以刷刷Github的活跃度），同时省了自己的时间，只需要在固定的时间，对这些进行整理即可。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/02/29/one-click-collecto-to-github/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/02/10/2015-nian-zhong-zong-jie/">2015年终总结</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-02-10T09:18:00+08:00'><span class='date'>2016-02-10</span> <span class='time'>9:18 am</span></time>
+        
+           | <a href="/blog/2016/02/10/2015-nian-zhong-zong-jie/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/02/10/2015-nian-zhong-zong-jie/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在这一年里，一大半的时间都在创业公司度过，10月中旬开始跳槽换公司，12月临时决定了去一家氛围比较满意的公司。这期间有着好多波折，同时也是自己一个思考的过程，为自己将来的目标与计划做一个比较好的筛选。所以，以后在面试找工作的过程中，一定要慎重，不要着急，结合自己的兴趣与想要的环境、氛围来确定自己的去处。接下来，主要从自己收获、不足、展望来进行一番总结。接下来，从自己感触最深的几个方面谈起。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/02/10/2015-nian-zhong-zong-jie/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/12/22/Android-memory-leak-analysis/">Android内存泄露代码详解</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-12-22T13:49:19+00:00'><span class='date'>2015-12-22</span> <span class='time'>1:49 pm</span></time>
+        
+           | <a href="/blog/2015/12/22/Android-memory-leak-analysis/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2015/12/22/Android-memory-leak-analysis/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h1>内存泄露</h1>
+
+<p>在开发应用的过程中，我们总会遇到内存泄露的问题。现在通过代码列出一些常见的内存泄露的情况以及解决方案。</p>
+
+<p>在安卓中内存泄露常常出现的情况是指组件生命周期已经结束，但是其引用被其他对象持有，得不到释放引起的。常见的内存泄露的情况，主要是有两种：内部类和静态引用的问题。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/12/22/Android-memory-leak-analysis/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/12/06/RxJava-analyze-one/">RxJava原理解析一</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-12-06T23:53:00+00:00'><span class='date'>2015-12-06</span> <span class='time'>11:53 pm</span></time>
+        
+           | <a href="/blog/2015/12/06/RxJava-analyze-one/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2015/12/06/RxJava-analyze-one/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>初学RxJava，对其许多的API颇感神奇，所以RxJava的原理充满了兴趣。正好最近教父大头鬼也出了一篇<a href="http://blog.csdn.net/lzyzsd/article/details/50110355">RxJava解析的文章</a>，本人也结合源码给出自己的理解。</p>
+
+<p>这里主要先就一点来讲解。问题如下：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/12/06/RxJava-analyze-one/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/11/29/Activity-SwipeBack-Analysize/">Activity之SwipeBack原理解析</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-11-29T23:09:33+00:00'><span class='date'>2015-11-29</span> <span class='time'>11:09 pm</span></time>
+        
+           | <a href="/blog/2015/11/29/Activity-SwipeBack-Analysize/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2015/11/29/Activity-SwipeBack-Analysize/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近在项目中遇到了使用<a href="https://github.com/ikew0ng/SwipeBackLayout">SwipeBackLayout</a>来模拟ios中右滑退出当前界面的效果（<em>万恶的模仿IOS</em>），颇感神奇，然后大致研究了下其代码实现的原理，接下来就一些主要的原理做一些讲解。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/11/29/Activity-SwipeBack-Analysize/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/10/26/Viewpager-loop-scroll/">Viewpager实现循环滚动</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-10-26T23:41:03+00:00'><span class='date'>2015-10-26</span> <span class='time'>11:41 pm</span></time>
+        
+           | <a href="/blog/2015/10/26/Viewpager-loop-scroll/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2015/10/26/Viewpager-loop-scroll/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Android中常常也会出现像Web网页上图片轮播的效果，也就是实现图片的循环滚动，这里以<a href="https://github.com/imbryk/LoopingViewPager">LoopingViewPager</a>为例，讲解一下如何实现viewPager的无限滚动。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/10/26/Viewpager-loop-scroll/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/10/18/ListView-scroll-analyze/">ListView图片加载讲解</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-10-18T23:24:48+00:00'><span class='date'>2015-10-18</span> <span class='time'>11:24 pm</span></time>
+        
+           | <a href="/blog/2015/10/18/ListView-scroll-analyze/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2015/10/18/ListView-scroll-analyze/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在ListView加载图片的时候，我们就会关于这里的图片加载产生一些问题。另外，我们知道针对ListView加载图片常用的优化方案之一就是，在列表的滑动过程中，暂停图片的加载任务，在滑动结束之后，则继续之前的任务。所以我们针对这些问题进行一些探讨研究（以UIL图片加载为例）。</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/10/18/ListView-scroll-analyze/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/page5">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/page3">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,720 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Kotlin DSL 学习 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="Kotlin DSL 学习 2018-03-02 4:46 pm | Comments DSL（domain-specific language），特定领域语言。wiki 关于 DSL 的定义如下： A domain-specific language (DSL) is a computer &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2018/03/02/kotlin-dsl-learn/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Kotlin DSL 学习</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2018-03-02T16:46:00+08:00'><span class='date'>2018-03-02</span> <span class='time'>4:46 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>DSL（domain-specific language），特定领域语言。wiki 关于 DSL 的定义如下：</p>
+
+<!-- more -->
+
+
+<blockquote><p>A domain-specific language (DSL) is a computer language specialized to a particular application domain. This is in contrast to a general-purpose language (GPL), which is broadly applicable across domains.</p></blockquote>
+
+<p>通俗来讲，其是指特定领域的语言，如 SQL, Gradle 等。另外其语言是可表达的且易读的。</p>
+
+<p>而 Kotlin 的语言特征，能够让我们更加方便地来实现 DSL。</p>
+
+<h2>语言特性</h2>
+
+<h3>1.Lambda Out of Parentheses</h3>
+
+<p>lambda 通常定义的格式为 （list of param types） -> returned type。最简单的格式则为 () -> Unit , 其中 Unit 等同于 Void。</p>
+
+<p>将一个  lambda 赋值给一个变量，最基本的格式如下：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>val helloPrint: (String) -&gt; Unit = { println(it) }</span></code></pre></td></tr></table></div></figure>
+
+
+<p>调用此 lambda 的话：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>helloPrint("Hello")</span></code></pre></td></tr></table></div></figure>
+
+
+<p>而多参数时，可如下使用：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>val helloPrint: (String, Int) -&gt; Unit = { _, _ -&gt; println("Do nothing") } 
+</span><span class='line'>helloPrint("Does not matter", 42) //output: Do nothing</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中参数不使用时，可用下划线来代替。</p>
+
+<p>关于 Lambda 的使用，这里假设有个函数 x()，当一个 lambda 是这个函数的最后一个参数时，其可以放置在函数括号的外面。另外，如果这个 lambda 是这个函数的唯一参数时，这个括号是可以省略的。这样，形如 x({…}) 的使用可以转换为 x(){}，再省略括号的话，我们得到 x{}。</p>
+
+<p>lambda 的使用则有如下的形式：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fun x( lambda: () -&gt; Unit ) { lambda() }</span></code></pre></td></tr></table></div></figure>
+
+
+<p>也可以写成单行如下：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fun x( lambda: () -&gt; Unit ) = lambda()</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这样若是实现一个形如</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">val</span> <span class="n">person</span> <span class="o">=</span> <span class="n">person</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">it</span><span class="o">.</span><span class="na">name</span> <span class="o">=</span> <span class="s">&quot;John&quot;</span>
+</span><span class='line'>    <span class="n">it</span><span class="o">.</span><span class="na">age</span> <span class="o">=</span> <span class="mi">25</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>的 DSL 用法，其中 person 的声明如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">data</span> <span class="kd">class</span> <span class="nf">Person</span><span class="o">(</span><span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="o">,</span>
+</span><span class='line'>                  <span class="n">var</span> <span class="nl">age:</span> <span class="n">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="o">,</span>
+</span><span class='line'>                  <span class="n">var</span> <span class="nl">address:</span> <span class="n">Address</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这时，则可以定义一个 person 的 lambda 定义：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">fun</span> <span class="nf">person</span><span class="o">(</span><span class="nl">block:</span> <span class="o">(</span><span class="n">Person</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="n">Unit</span><span class="o">):</span> <span class="n">Person</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">val</span> <span class="n">p</span> <span class="o">=</span> <span class="n">Person</span><span class="o">()</span>
+</span><span class='line'>    <span class="n">block</span><span class="o">(</span><span class="n">p</span><span class="o">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">p</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>2.Lambdas with receivers</h3>
+
+<p>在上述的 person dsl 用法中，it 的使用来说每次都是累赘的。这时可以通过 Lambda with receivers ，来避免每次写它。</p>
+
+<p>它的意思是可以为 lambda 的声明指定一个接受者 receiver ，这样我们在 lambda 中只能访问这个 receiver 的所有非静态的公开函数。由于其限定了 receiver 的域，所以在 lambda 中，可以不必在提供前缀的 it 参数。</p>
+
+<p>所以，这里的格式为  () -> Unit 转变为了 X.()-> Unit。</p>
+
+<blockquote><p>注意，这里的写法只是用于方便书写，将这两种形式的代码转变为字节码时，可以发现其并没有区别的。仅仅在于其一个赋值给了变量 it，一个赋值给了变量 receiver。</p></blockquote>
+
+<p>将 person 的 fun 修改为：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">fun</span> <span class="nf">person</span><span class="o">(</span><span class="nl">block:</span> <span class="n">Person</span><span class="o">.()</span> <span class="o">-&gt;</span> <span class="n">Unit</span><span class="o">):</span> <span class="n">Person</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">val</span> <span class="n">p</span> <span class="o">=</span> <span class="n">Person</span><span class="o">()</span>
+</span><span class='line'>    <span class="n">p</span><span class="o">.</span><span class="na">block</span><span class="o">()</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">p</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>简写成一行的话如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">fun</span> <span class="nf">person</span><span class="o">(</span><span class="nl">block:</span> <span class="n">Person</span><span class="o">.()</span> <span class="o">-&gt;</span> <span class="n">Unit</span><span class="o">):</span> <span class="n">Person</span> <span class="o">=</span> <span class="n">Person</span><span class="o">().</span><span class="na">apply</span><span class="o">(</span><span class="n">block</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这时，person 的调用便可以简化：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">val</span> <span class="n">person</span> <span class="o">=</span> <span class="n">person</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;John&quot;</span>
+</span><span class='line'>    <span class="n">age</span> <span class="o">=</span> <span class="mi">25</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>3.Extension functions</h3>
+
+<p>此功能即为扩展函数，其表现就是给一些类提供额外的方法，来方便开发调用。其在 Java 中的实现则是通过静态函数来实现，参数便是 Kotlin 中对应的类。</p>
+
+<p>所以，要实现如下的 DSL :</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">val</span> <span class="n">person</span> <span class="o">=</span> <span class="n">person</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;John&quot;</span>
+</span><span class='line'>    <span class="n">age</span> <span class="o">=</span> <span class="mi">25</span>
+</span><span class='line'>    <span class="n">address</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">street</span> <span class="o">=</span> <span class="s">&quot;Main Street&quot;</span>
+</span><span class='line'>        <span class="n">number</span> <span class="o">=</span> <span class="mi">42</span>
+</span><span class='line'>        <span class="n">city</span> <span class="o">=</span> <span class="s">&quot;London&quot;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在声明一个 Address：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">data</span> <span class="kd">class</span> <span class="nf">Address</span><span class="o">(</span><span class="n">var</span> <span class="nl">street:</span> <span class="n">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="o">,</span>
+</span><span class='line'>                   <span class="n">var</span> <span class="nl">number:</span> <span class="n">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="o">,</span>
+</span><span class='line'>                   <span class="n">var</span> <span class="nl">city:</span> <span class="n">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>便要对 person 类作拓展：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">fun</span> <span class="n">Person</span><span class="o">.</span><span class="na">address</span><span class="o">(</span><span class="nl">block:</span> <span class="n">Address</span><span class="o">.()</span> <span class="o">-&gt;</span> <span class="n">Unit</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">address</span> <span class="o">=</span> <span class="n">Address</span><span class="o">().</span><span class="na">apply</span><span class="o">(</span><span class="n">block</span><span class="o">)</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>4.Builder Pattern</h3>
+
+<p>在上面的例子中，其参数都是为 var 定义，若需要为 val 定义，这里可以采用 builder 模式来实现。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">fun</span> <span class="nf">person</span><span class="o">(</span><span class="nl">block:</span> <span class="n">PersonBuilder</span><span class="o">.()</span> <span class="o">-&gt;</span> <span class="n">Unit</span><span class="o">):</span> <span class="n">Person</span> <span class="o">=</span> <span class="n">PersonBuilder</span><span class="o">().</span><span class="na">apply</span><span class="o">(</span><span class="n">block</span><span class="o">).</span><span class="na">build</span><span class="o">()</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="kd">class</span> <span class="nc">PersonBuilder</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">name:</span> <span class="n">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">private</span> <span class="n">var</span> <span class="nl">dob:</span> <span class="n">Date</span> <span class="o">=</span> <span class="n">Date</span><span class="o">()</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">dateOfBirth:</span> <span class="n">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>        <span class="n">set</span><span class="o">(</span><span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">dob</span> <span class="o">=</span> <span class="n">SimpleDateFormat</span><span class="o">(</span><span class="s">&quot;yyyy-MM-dd&quot;</span><span class="o">).</span><span class="na">parse</span><span class="o">(</span><span class="n">value</span><span class="o">)</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">private</span> <span class="n">var</span> <span class="nl">address:</span> <span class="n">Address</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">fun</span> <span class="nf">address</span><span class="o">(</span><span class="nl">block:</span> <span class="n">AddressBuilder</span><span class="o">.()</span> <span class="o">-&gt;</span> <span class="n">Unit</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">address</span> <span class="o">=</span> <span class="n">AddressBuilder</span><span class="o">().</span><span class="na">apply</span><span class="o">(</span><span class="n">block</span><span class="o">).</span><span class="na">build</span><span class="o">()</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">fun</span> <span class="nf">build</span><span class="o">():</span> <span class="n">Person</span> <span class="o">=</span> <span class="n">Person</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">dob</span><span class="o">,</span> <span class="n">address</span><span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">class</span> <span class="nc">AddressBuilder</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">street:</span> <span class="n">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">number:</span> <span class="n">Int</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>    <span class="n">var</span> <span class="nl">city:</span> <span class="n">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">fun</span> <span class="nf">build</span><span class="o">()</span> <span class="o">:</span> <span class="n">Address</span> <span class="o">=</span> <span class="n">Address</span><span class="o">(</span><span class="n">street</span><span class="o">,</span> <span class="n">number</span><span class="o">,</span> <span class="n">city</span><span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如此，Person 的构造函数便可以使用 val 了，同时 builder 模式保证了类型安全的目的 （type-safe）。</p>
+
+<h3>5. Scope control: @DslMarker (Since 1.1)</h3>
+
+<p>因为 lambda 的实现都是匿名函数，其可以访问外部作用域。所以这里使用 @DslMarker ，可以达到收窄作用域的目的。如下，使用其声明一个 annotation class:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@DslMarker</span>
+</span><span class='line'><span class="n">annotation</span> <span class="kd">class</span> <span class="nc">PersonDsl</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>之后，将 @PersonDsl 添加在指定的类上，然后以此类定义的闭包，则不能访问外层作用域的内容。其会在编译器中得到错误的提示。</p>
+
+<h2>Anko</h2>
+
+<p>在 Android 中关于 Kotlin 的使用，集大成者便属于  <a href="https://github.com/Kotlin/anko">Kotlin/anko: Pleasant Android application development</a> 了，其主要包含的内容：</p>
+
+<ul>
+<li>Anko Commons:  关于 intents、dialogs、 logging 等轻量级的工具库</li>
+<li>Anko Layouts: 提供一个快速且类型安全的快速 Android 布局方法。</li>
+<li>Anko SQLite:  对 Android SQLite 支持的查询和集合转换的 DSL 功能。</li>
+<li>Anko Coroutines: 对 kotlinx.coroutines library 提供的工具类。</li>
+</ul>
+
+
+<p>其中，以最常用的 Anko Layouts 为例：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">verticalLayout</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">val</span> <span class="n">name</span> <span class="o">=</span> <span class="n">editText</span><span class="o">()</span>
+</span><span class='line'>    <span class="n">button</span><span class="o">(</span><span class="s">&quot;Say Hello&quot;</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">onClick</span> <span class="o">{</span> <span class="n">toast</span><span class="o">(</span><span class="s">&quot;Hello, ${name.text}!&quot;</span><span class="o">)</span> <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里指定了一个竖直的 layout，在其中声明了一个名称为 name 的 editText，另有一个文本为 “Say hello” 的按钮，并为按钮添加一个点击的事件，事件可以弹出一个 toast，提示内容为 Hello 加 name 控件的文本。</p>
+
+<p>这里，相比以前的 xml 写法，这种写法简洁了许多。但要使用预览功能，这里需要另外安装 Anko Support Plugin 的插件，并采用 AnkoComponet 的方式书写 Anko Layout。</p>
+
+<p>其中关于 verticalLayout 的定义是在 CustomViews 类中。且此方法针对 ViewManager、Context 及 Activity 做了扩展，以 Actiivty 为例：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">inline</span> <span class="n">fun</span> <span class="n">Activity</span><span class="o">.</span><span class="na">verticalLayout</span><span class="o">(</span><span class="nl">theme:</span> <span class="n">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="o">):</span> <span class="n">LinearLayout</span> <span class="o">=</span> <span class="n">verticalLayout</span><span class="o">(</span><span class="n">theme</span><span class="o">)</span> <span class="o">{}</span>
+</span><span class='line'><span class="n">inline</span> <span class="n">fun</span> <span class="n">Activity</span><span class="o">.</span><span class="na">verticalLayout</span><span class="o">(</span><span class="nl">theme:</span> <span class="n">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="o">,</span> <span class="nl">init:</span> <span class="o">(</span><span class="nd">@AnkoViewDslMarker</span> <span class="n">_LinearLayout</span><span class="o">).()</span> <span class="o">-&gt;</span> <span class="n">Unit</span><span class="o">):</span> <span class="n">LinearLayout</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nf">ankoView</span><span class="o">(</span><span class="err">`</span><span class="n">$$Anko$Factories$CustomViews</span><span class="err">`</span><span class="o">.</span><span class="na">VERTICAL_LAYOUT_FACTORY</span><span class="o">,</span> <span class="n">theme</span><span class="o">,</span> <span class="n">init</span><span class="o">)</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中的 Lambda 为 _LinearLayout 类，关于 VERTICAL_LAYOUT_FACTORY 的定义如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@PublishedApi</span>
+</span><span class='line'><span class="n">internal</span> <span class="n">object</span> <span class="err">`</span><span class="n">$$Anko$Factories$CustomViews</span><span class="err">`</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">val</span> <span class="n">VERTICAL_LAYOUT_FACTORY</span> <span class="o">=</span> <span class="o">{</span> <span class="nl">ctx:</span> <span class="n">Context</span> <span class="o">-&gt;</span>
+</span><span class='line'>        <span class="n">val</span> <span class="n">view</span> <span class="o">=</span> <span class="n">_LinearLayout</span><span class="o">(</span><span class="n">ctx</span><span class="o">)</span>
+</span><span class='line'>        <span class="n">view</span><span class="o">.</span><span class="na">orientation</span> <span class="o">=</span> <span class="n">LinearLayout</span><span class="o">.</span><span class="na">VERTICAL</span>
+</span><span class='line'>        <span class="n">view</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过 lambda 的内容，来实例化一个 _LinearLayout，并指定其 orientation 为 LinearLayout.VERTICAL。另外， ankoView 方法，这里所做的工作：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">inline</span> <span class="n">fun</span> <span class="o">&lt;</span><span class="n">T</span> <span class="o">:</span> <span class="n">View</span><span class="o">&gt;</span> <span class="n">Activity</span><span class="o">.</span><span class="na">ankoView</span><span class="o">(</span><span class="nl">factory:</span> <span class="o">(</span><span class="nl">ctx:</span> <span class="n">Context</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="o">,</span> <span class="nl">theme:</span> <span class="n">Int</span><span class="o">,</span> <span class="nl">init:</span> <span class="n">T</span><span class="o">.()</span> <span class="o">-&gt;</span> <span class="n">Unit</span><span class="o">):</span> <span class="n">T</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">val</span> <span class="n">ctx</span> <span class="o">=</span> <span class="n">AnkoInternals</span><span class="o">.</span><span class="na">wrapContextIfNeeded</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">theme</span><span class="o">)</span>
+</span><span class='line'>    <span class="n">val</span> <span class="n">view</span> <span class="o">=</span> <span class="n">factory</span><span class="o">(</span><span class="n">ctx</span><span class="o">)</span>
+</span><span class='line'>    <span class="n">view</span><span class="o">.</span><span class="na">init</span><span class="o">()</span>
+</span><span class='line'>    <span class="n">AnkoInternals</span><span class="o">.</span><span class="na">addView</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">view</span><span class="o">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">view</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>对 context 做以包装，通过 factory 方法得到 View , 再调用 view 的 lambda init 方法。之后通过 AnkoInternals 的 addView 方法对 view 进行添加操作，将其添加至视图中。</p>
+
+<p>回到上面的视图书写中。因为 Android 中的 view 都实现了接口 ViewManager，而这里的扩展方法，针对类便是以 Context、ViewManager、Activity 这三个为主。包含下面的 editText 方法：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">inline</span> <span class="n">fun</span> <span class="n">ViewManager</span><span class="o">.</span><span class="na">editText</span><span class="o">():</span> <span class="n">android</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">EditText</span> <span class="o">=</span> <span class="n">editText</span><span class="o">()</span> <span class="o">{}</span>
+</span><span class='line'><span class="n">inline</span> <span class="n">fun</span> <span class="n">ViewManager</span><span class="o">.</span><span class="na">editText</span><span class="o">(</span><span class="nl">init:</span> <span class="o">(</span><span class="nd">@AnkoViewDslMarker</span> <span class="n">android</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">EditText</span><span class="o">).()</span> <span class="o">-&gt;</span> <span class="n">Unit</span><span class="o">):</span> <span class="n">android</span><span class="o">.</span><span class="na">widget</span><span class="o">.</span><span class="na">EditText</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nf">ankoView</span><span class="o">(</span><span class="err">`</span><span class="n">$$Anko$Factories$Sdk25View</span><span class="err">`</span><span class="o">.</span><span class="na">EDIT_TEXT</span><span class="o">,</span> <span class="n">theme</span> <span class="o">=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span> <span class="n">init</span><span class="o">()</span> <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中 editText 方法会调用到 ViewManager 的扩展，紧接着调用到下面的 editText，也就意味着 ankoView 方法的调用，所以在调用 editText 及 button 后，都会执行它们的 addView 方法。
+以上，便是简单的通过扩展来实现 view 布局的 DSL 了。另，还有其他更加复杂的扩展可再自行研究了。</p>
+
+<h2>Android KTX</h2>
+
+<p><a href="https://github.com/android/android-ktx">android/android-ktx</a>  其定义了一系列关于 Android App 开发中 Kotlin 的扩展，其目的是将我们用 Kotlin 开发 Android 代码更加简化，而并不是对已有的 Android API 添加新的功能。</p>
+
+<p>如：</p>
+
+<p><em>Kotlin:</em></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">val</span> <span class="n">uri</span> <span class="o">=</span> <span class="n">Uri</span><span class="o">.</span><span class="na">parse</span><span class="o">(</span><span class="n">myUriString</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><em>Kotlin with Android KTX:</em></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">val</span> <span class="n">uri</span> <span class="o">=</span> <span class="n">myUriString</span><span class="o">.</span><span class="na">toUri</span><span class="o">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这是一个 Extension functions 的应用，另外还有其他关于 Lambda 等的应用。不过其目前处于一个 preview 的开发应用，可对其未支持的 API 提 pr，进行贡献开发。</p>
+
+<h2>参考资料</h2>
+
+<ul>
+<li><a href="https://dzone.com/articles/kotlin-dsl-from-theory-to-practice">Kotlin DSL: From Theory to Practice - DZone Java</a></li>
+<li><a href="https://proandroiddev.com/writing-dsls-in-kotlin-part-1-7f5d2193f277">Writing DSLs in Kotlin (part 1) – ProAndroidDev</a></li>
+<li><a href="https://proandroiddev.com/writing-dsls-in-kotlin-part-2-cd9dcd0c4715">Writing DSLs in Kotlin (part 2) – ProAndroidDev</a></li>
+<li><a href="https://kotlinlang.org/docs/reference/lambdas.html#higher-order-functions">Higher-Order Functions and Lambdas - Kotlin Programming Language</a></li>
+<li><a href="https://kotlinlang.org/docs/reference/extensions.html">Extensions - Kotlin Programming Language</a></li>
+<li><a href="https://kotlinlang.org/docs/reference/type-safe-builders.html">Type-Safe Groovy-Style Builders - Kotlin Programming Language</a></li>
+</ul>
+
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2018/03/02/kotlin-dsl-learn/">/blog/2018/03/02/kotlin-dsl-learn/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2018-03-02T16:46:00+08:00'><span class='date'>2018-03-02</span> <span class='time'>4:46 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2018/03/02/kotlin-dsl-learn/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2018/03/02/kotlin-dsl-learn/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/01/25/understand-imageloader/" title="Previous Post: 图片加载理解之 UIL">&laquo; 图片加载理解之 UIL</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2018/03/16/leakcanary-learn/" title="Next Post: LeakCanary 浅析">LeakCanary 浅析 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2018/03/02/kotlin-dsl-learn/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2018/03/02/kotlin-dsl-learn/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

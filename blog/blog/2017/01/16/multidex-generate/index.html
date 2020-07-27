@@ -1,0 +1,512 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>理解 Multidex 生成 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="理解 Multidex 生成 2017-01-16 3:00 pm | Comments 介绍 在 Android 开发中，提到 65536 问题，就不得不提 Multidex 的解决方案。具体问题就是在 Android 打包的期间，是需要对 java 文件编译成 class 文件，class &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2017/01/16/multidex-generate/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">理解 Multidex 生成</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-01-16T15:00:00+08:00'><span class='date'>2017-01-16</span> <span class='time'>3:00 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>介绍</h2>
+
+<p>在 Android 开发中，提到 65536 问题，就不得不提 Multidex 的解决方案。具体问题就是在 Android 打包的期间，是需要对 java 文件编译成 class 文件，class 文件信息过多而又冗余，这就再经过一步合并变成 dex 文件的过程（这一步是 dx 工具来处理的），其才是 Davilk 虚拟机加载识别的东西。而单个 dex 文件，其对方法数、字段数做了限制，即不能超过 65536，这便是问题的由来了。</p>
+
+<p>当然，解决这个问题也是很简单的。在 gradle 中启用 Multidex，在 application 中添加 Multidex.install 方法。乍以为万事大吉了，但在我们项目中还是遇到了 65536 的问题，主要是因为项目太大，在生成 mainDex 的过程中，还是出现了方法数超过了 65536 的问题，解决这个问题的思想是要将 mainDex 中的一些类移除至其它的 dex 中。那这一步，应该怎么玩呢？这里先看一些 dx 工具为我们提供了什么？</p>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>  [--multi-dex [--main-dex-list=&lt;file&gt; [--minimal-main-dex]]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>执行 dx 命令，可以看到其提供了 &ndash;multi-dex 的选项参数，需要接受的是一个文件的 &ndash;main-dex-list 以及一个最小化主 dex 的 &ndash;minimal-main-dex 参数。这里就是需要我们最终控制的地方，但要接触到这里，需要我们先看看 gradle plugin 是如何集成与使用它的？</p>
+
+<h2>生成</h2>
+
+<p>在使用 Android Studio 的时候，在 build.gradle 文件中，已经提供了 multidex 的支持。相应的选项是在 defaultConfig 中的 <code>multiDexEnabled</code> 设置为 true 即可。那其是如何生成多个 dex 的过程，就需要在 gradle plugin 的源码中来寻找答案了。</p>
+
+<p>通过 gradle 编译生成 apk 的期间，可以通过 <code>Gradle Console</code> 视图查看 gradle 执行任务的输出，期间跟 multidex 几个相关的任务如下：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>:app:transformClassesWithJarMergingForDevDebug UP-TO-DATE
+</span><span class='line'>:app:collectDevDebugMultiDexComponents
+</span><span class='line'>:app:transformClassesWithMultidexlistForDevDebug UP-TO-DATE
+</span><span class='line'>:app:transformClassesWithDexForDevDebug UP-TO-DATE</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这几个任务对应在 gradle plugin 的源码中的位置为 TaskManager 的方法 <code>createPostCompilationTasks</code>。这里针对其中相关的 transform 和 task 做以简单的讲解：</p>
+
+<h3>1. JarMergingTransform</h3>
+
+<p>JarMergingTransform 的主要作用是将所用到的 jar 转换至一个单一的 Jar 中。具体输出的结果，可以在 build/intermediates/transforms/jarMerging 目录下，看到一个名称为 combined 的 jar 文件。</p>
+
+<h3>2. CreateManifestKeepList</h3>
+
+<p>CreateManifestKeepList 继承自 DefaultAndroidTask, 这一步会读取项目之前合并后的 manifest 文件，根据既定的规则，获取其中的 application、activity、service、provider、instrumentation 类，与 Mainifest 中的类组件进行比较来获取，最后会在 build/intermediates/multidex 下生成名为 manifest_keep.txt 的文件。</p>
+
+<p>另外，此任务设置 <code>Filter</code> 类，支持对特定的类进行过滤，让指定的类保存在 maindex 中。但是此方法已被标记为 Deprecated, 可能会在后续的版本中废弃掉。</p>
+
+<h3>3. MultiDexTransform</h3>
+
+<p>MultiDexTransform 的主要任务是根据之前的 mainfest_keep 及一些 proguard 文件来生成 mainDex 中指定的类集合文件，对应生成的输出结果为 <code>maindexlist.txt</code> 。</p>
+
+<p>但这里有个问题，就是 mainDex 的生成规则，其是如何指定哪些类在 mainDexList 中？</p>
+
+<p>查看源码可看到它把这部分工作交给类 <code>ClassReferenceListBuilder</code>。其又调用了类 <code>MainDexListBuilder</code>，后者对应着 build_tools 中的 mainClasses 工具中处理依赖关系所使用到的类。这里真正的依赖判端逻辑是在 <code>ClassReferenceListBuilder</code> 中，所需要指定的两个参数 <code>path</code> 和 <code>jarOfRoots</code>，前者表示的是所需要处理的所有类文件的路径(对应上文的 combined.jar)，后者指定的是所需要在 mainDex 中的类（即处理依赖时的 root，获取 root 所依赖的类, 对应上述步骤中生成的 manifest_keep.txt 中的类），</p>
+
+<p>其生成规则是遍历 <code>jarOfRoots</code> 中的 class 文件，将其对应程 <code>DirectClassFile</code> 对象（包含 class 信息的相应对象），之后从其中获取常量池中的类型，判断是类、方法、字段，并添加其类型所包含的类型信息。若是方法的时候，则需要的是方法的返回值类型以及参数值的类型。这里类型信息进行获取的时候，会从类、超类、实现的接口列表三个角度进行判断获取相应的类型信息。</p>
+
+<p>所以说，这里的依赖类的获取，是通过当前类的常量池来进行获取判断的，不得不说很机智。</p>
+
+<h3>4. DexTransform</h3>
+
+<p>它被 dexTask 所使用，相对应的调用程序为 build-tools 中的 dx 程序。在 DexTransform 中的参数 dexOptions、mainDexListFile 指定了 dx 命令执行过程中所需要的参数。其主要的任务用来生成 apk 中的 dex 文件，若是指定了 multidex 为 true 时，则会根据 mainDexList 文件(指定哪些类会在 mainDex)来划分生成最后的多个 dex 文件。</p>
+
+<p>这一步就是通过以上步骤的输出作为输入，进而执行 dx 命令的，来生成最终的 dex。了解到这里，接下来我们需要在以上的过程中动些手脚，来解决我们遇到的问题。</p>
+
+<h2>解决</h2>
+
+<h3>方法一：改变 keepList 任务列表</h3>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>afterEvaluate {
+</span><span class='line'>  project.tasks.each { task -&gt;
+</span><span class='line'>      if (task.name.startsWith('collect') && task.name.endsWith('MultiDexComponents')) {
+</span><span class='line'>          println "main-dex-filter: found task $task.name"
+</span><span class='line'>          task.filter { name, attrs -&gt;
+</span><span class='line'>              def componentName = attrs.get('android:name')
+</span><span class='line'>              if ('activity'.equals(name)) {
+</span><span class='line'>                  println "main-dex-filter: skipping, detected activity [$componentName]"
+</span><span class='line'>                  return false
+</span><span class='line'>              } else {
+</span><span class='line'>                  println "main-dex-filter: keeping, detected $name [$componentName]"
+</span><span class='line'>                  return true
+</span><span class='line'>              }
+</span><span class='line'>          }
+</span><span class='line'>      }
+</span><span class='line'>  }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这一步对应 gradle 执行过程中的 <code>CreateManifestKeepList</code>，利用其提供的 filter，进行一些过滤操作，其中 <code>name</code> 参数表示为节点类型，例如 activity、service、receiver 等; <code>attrs</code> 参数表示相应的节点信息，它是一个 Map 类型的参数，可表示的值形如 <code>['android:name':'com.example.ActivityClass']</code> 。</p>
+
+<p>这一步可对 mainDex 中的组件信息做一些过滤，而不是添加所有的组件信息。像上述代码的处理就很残暴，把所有的 activity 都过滤掉。</p>
+
+<blockquote><p>PS: 需要注意的是，在源码中的 setFilter 已经被标为废弃，可能会在后续的版本被替换掉，所以用这种方案需要所使用的 gradle plugin 版本注意一二。</p></blockquote>
+
+<h3>方法二：修改 dx 的参数值</h3>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>afterEvaluate {
+</span><span class='line'>  tasks.matching {
+</span><span class='line'>      it.name.startsWith('dex')
+</span><span class='line'>      println("task name:" + it.name)
+</span><span class='line'>  }.each { dx -&gt;
+</span><span class='line'>
+</span><span class='line'>      if (dx.additionalParameters == null) {
+</span><span class='line'>          dx.additionalParameters = []
+</span><span class='line'>      }
+</span><span class='line'>
+</span><span class='line'>      //允许生成多个dex文件
+</span><span class='line'>      dx.additionalParameters += '--multi-dex' // enable multidex
+</span><span class='line'>
+</span><span class='line'>      // 设置multidex.keep文件中class为第一个dex文件中包含的class，如果没有下一项设置此项无作用
+</span><span class='line'>      dx.additionalParameters += "--main-dex-list=$projectDir/multidex.keep".toString()
+</span><span class='line'>
+</span><span class='line'>      //此项添加后第一个classes.dex文件只能包含-main-dex-list列表中class
+</span><span class='line'>      dx.additionalParameters += '--minimal-main-dex'
+</span><span class='line'>
+</span><span class='line'>  }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这一步直接对应 dx 最终的调用，即修改我们上文所提到的参数值，将其替换我们手动填充的值，但是这一步的 multidex.keep 文件就需要我们折腾一二了。</p>
+
+<p>不过针对这个方案，笔者是一直没有找到在 Task 中相对应的以 dex 开头的任务，所以这个方案没有生效。那为什么会有这种写法呢？笔者在 <code>Project</code> 中的 <code>Variant</code> 中相对应的 <code>ApkVariant</code> 类中看到一点信息，此接口定义了 <code>getDex()</code> 方法，对应实现在 <code>ApkVariantImpl</code> 中如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="nd">@Nullable</span>
+</span><span class='line'> <span class="nd">@Override</span>
+</span><span class='line'> <span class="kd">public</span> <span class="n">Object</span> <span class="nf">getDex</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>     <span class="k">throw</span> <span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">(</span><span class="s">&quot;Access to the dex task is now impossible, starting with 1.4.0\n&quot;</span>
+</span><span class='line'>             <span class="o">+</span> <span class="s">&quot;1.4.0 introduces a new Transform API allowing manipulation of the .class files.\n&quot;</span>
+</span><span class='line'>             <span class="o">+</span> <span class="s">&quot;See more information: http://tools.android.com/tech-docs/new-build-system/transform-api&quot;</span><span class="o">);</span>
+</span><span class='line'> <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码中返回的值就是这个方案中与 <code>dx</code> 相对应的值。不过从异常信息中可以看到的是在 gradle plugin 1.4.0 的版本开始，此方法就已被废弃，而改为采用 transform 的实现。</p>
+
+<p>所以此方案只针对 gradle plugin 1.4.0 之前的版本。</p>
+
+<h3>方案三：修改 MainDexList</h3>
+
+<p>这里所说的 MainDexList 对应着 bulld-tools 目录下的 dx 工具中 &ndash;main-dex-list 参数，与 Gradle  任务中相对应的是上文中提到的 <code>DexTransform</code> 的参数 <code>mainDexListFile</code>。意味着我们在调用 dx 命令（对应着执行 DexTransform）时，可对 KeepList 进行二次修改，保证 mainDex 中的类不超过限制，同时不出现 NoClassDefFoundError 的错误。</p>
+
+<h3>最终方案：DexKnifePlugin</h3>
+
+<p>推荐使用 <a href="https://github.com/ceabie/DexKnifePlugin">DexKnifePlugin</a>。来简单描述一下它的实现。其定义了一套类似 Proguard 的规则，用来定制生成 mainDex 所需 MainDexList 的规则，另外其考虑了 Gradle Plugin 针对 Dex 生成的两个不同版本的兼容。最后达到缩减、调整 MainDexList 来保证 mainDex 的生成无误。(是上述方案二和三的结合)</p>
+
+<h2>扩展</h2>
+
+<h3>NoClassDefFoundError 的出现</h3>
+
+<p>出现这个错误时，解决办法是将异常中的这个类加至 mainDex 中。但是这个错误跟 <code>NotClassFoundException</code> 的区别，可查阅 <a href="http://stackoverflow.com/a/5756989">链接</a>。</p>
+
+<p>其出现这个问题的说法，简单理解为虚拟机在第一次加载该类的出现了问题，当第二次再次使用这个类的时候，就会报出 NoClassDefFoundError。对应为我们 App 在运行时，在 mainDex 中有些类找不到，就会出现这样的错误。</p>
+
+<p>但是为什么出现 NoClassDefFoundError 呢？从上面的分析可知 mainDex 并不会把它依赖的所有类都包含进去，那么其类加载的规则是什么样的？这些内容是跟 Dalvik 虚拟机相关的，任务量不小，就暂且留作 2017 年的一项学习任务了。</p>
+
+<h2>总结</h2>
+
+<p>文章简单介绍了 Gradle Plugin 处理 MultiDex 的步骤，若是需要对 MainDex 做特殊处理时，便可根据 Manifest 文件生成的 keepList 或者 DexTransform 中的 MainDexList 做处理。</p>
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2017/01/16/multidex-generate/">/blog/2017/01/16/multidex-generate/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2017-01-16T15:00:00+08:00'><span class='date'>2017-01-16</span> <span class='time'>3:00 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2017/01/16/multidex-generate/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2017/01/16/multidex-generate/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/11/01/multidex-problems/" title="Previous Post: Multidex 的问题">&laquo; Multidex 的问题</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2017/01/23/reactnative-seprate-js/" title="Next Post: React Native 之 JS 分离">React Native 之 JS 分离 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2017/01/16/multidex-generate/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2017/01/16/multidex-generate/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

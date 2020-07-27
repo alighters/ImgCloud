@@ -1,0 +1,910 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Webview 支持 Input Type=file - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="Webview 支持 Input Type=file 2015-07-07 7:27 am | Comments 在一个带有input tpye=file标签的Html页面，通过WebView，上传android手机上的图片，发现不工作。（在Ios和微信上完全正常工作）所以， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2015/07/07/Webview-support-input-type-file/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Webview 支持 Input Type=file</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-07-07T07:27:44+00:00'><span class='date'>2015-07-07</span> <span class='time'>7:27 am</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>在一个带有input tpye=file标签的Html页面，通过WebView，上传android手机上的图片，发现不工作。（在Ios和微信上完全正常工作）所以，需要研究一下Android的WebView，来支持type=file的标签。</p>
+
+<!-- more -->
+
+
+<h3>WebView设置WebChromeClient</h3>
+
+<p>  重写WebChromeClient中关于文件选择的方法，onShowFileChooser和openFileChooser。(项目中只需要选择图片，所以加上了图片过滤。)</p>
+
+<p>  <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">INPUT_FILE_REQUEST_CODE</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="n">ValueCallback</span><span class="o">&lt;</span><span class="n">Uri</span><span class="o">&gt;</span> <span class="n">mUploadMessage</span><span class="o">;</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">final</span> <span class="kd">static</span> <span class="kt">int</span> <span class="n">FILECHOOSER_RESULTCODE</span> <span class="o">=</span> <span class="mi">2</span><span class="o">;</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="n">ValueCallback</span><span class="o">&lt;</span><span class="n">Uri</span><span class="o">[]&gt;</span> <span class="n">mFilePathCallback</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">private</span> <span class="n">String</span> <span class="n">mCameraPhotoPath</span><span class="o">;</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="n">WebChromeClient</span> <span class="n">mWebChromeClient</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">WebChromeClient</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// android 5.0</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">onShowFileChooser</span><span class="o">(</span>
+</span><span class='line'>                <span class="n">WebView</span> <span class="n">webView</span><span class="o">,</span> <span class="n">ValueCallback</span><span class="o">&lt;</span><span class="n">Uri</span><span class="o">[]&gt;</span> <span class="n">filePathCallback</span><span class="o">,</span>
+</span><span class='line'>                <span class="n">WebChromeClient</span><span class="o">.</span><span class="na">FileChooserParams</span> <span class="n">fileChooserParams</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">mFilePathCallback</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="n">mFilePathCallback</span><span class="o">.</span><span class="na">onReceiveValue</span><span class="o">(</span><span class="kc">null</span><span class="o">);</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>            <span class="n">mFilePathCallback</span> <span class="o">=</span> <span class="n">filePathCallback</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">Intent</span> <span class="n">takePictureIntent</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Intent</span><span class="o">(</span><span class="n">MediaStore</span><span class="o">.</span><span class="na">ACTION_IMAGE_CAPTURE</span><span class="o">);</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">takePictureIntent</span><span class="o">.</span><span class="na">resolveActivity</span><span class="o">(</span><span class="n">getPackageManager</span><span class="o">())</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="c1">// Create the File where the photo should go</span>
+</span><span class='line'>                <span class="n">File</span> <span class="n">photoFile</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>                <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">photoFile</span> <span class="o">=</span> <span class="n">createImageFile</span><span class="o">();</span>
+</span><span class='line'>                    <span class="n">takePictureIntent</span><span class="o">.</span><span class="na">putExtra</span><span class="o">(</span><span class="s">&quot;PhotoPath&quot;</span><span class="o">,</span> <span class="n">mCameraPhotoPath</span><span class="o">);</span>
+</span><span class='line'>                <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">ex</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="c1">// Error occurred while creating the File</span>
+</span><span class='line'>                    <span class="n">Log</span><span class="o">.</span><span class="na">e</span><span class="o">(</span><span class="s">&quot;WebViewSetting&quot;</span><span class="o">,</span> <span class="s">&quot;Unable to create Image File&quot;</span><span class="o">,</span> <span class="n">ex</span><span class="o">);</span>
+</span><span class='line'>                <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="c1">// Continue only if the File was successfully created</span>
+</span><span class='line'>                <span class="k">if</span> <span class="o">(</span><span class="n">photoFile</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">mCameraPhotoPath</span> <span class="o">=</span> <span class="s">&quot;file:&quot;</span> <span class="o">+</span> <span class="n">photoFile</span><span class="o">.</span><span class="na">getAbsolutePath</span><span class="o">();</span>
+</span><span class='line'>                    <span class="n">takePictureIntent</span><span class="o">.</span><span class="na">putExtra</span><span class="o">(</span><span class="n">MediaStore</span><span class="o">.</span><span class="na">EXTRA_OUTPUT</span><span class="o">,</span>
+</span><span class='line'>                            <span class="n">Uri</span><span class="o">.</span><span class="na">fromFile</span><span class="o">(</span><span class="n">photoFile</span><span class="o">));</span>
+</span><span class='line'>                <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">takePictureIntent</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>                <span class="o">}</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">Intent</span> <span class="n">contentSelectionIntent</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Intent</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">ACTION_GET_CONTENT</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">contentSelectionIntent</span><span class="o">.</span><span class="na">addCategory</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">CATEGORY_OPENABLE</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">contentSelectionIntent</span><span class="o">.</span><span class="na">setType</span><span class="o">(</span><span class="s">&quot;image/<em>&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">Intent</span><span class="o">[]</span> <span class="n">intentArray</span><span class="o">;</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">takePictureIntent</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="n">intentArray</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Intent</span><span class="o">[]{</span><span class="n">takePictureIntent</span><span class="o">};</span>
+</span><span class='line'>            <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>                <span class="n">intentArray</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Intent</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">Intent</span> <span class="n">chooserIntent</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Intent</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">ACTION_CHOOSER</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">chooserIntent</span><span class="o">.</span><span class="na">putExtra</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">EXTRA_INTENT</span><span class="o">,</span> <span class="n">contentSelectionIntent</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">chooserIntent</span><span class="o">.</span><span class="na">putExtra</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">EXTRA_TITLE</span><span class="o">,</span> <span class="s">&quot;Image Chooser&quot;</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">chooserIntent</span><span class="o">.</span><span class="na">putExtra</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">EXTRA_INITIAL_INTENTS</span><span class="o">,</span> <span class="n">intentArray</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">startActivityForResult</span><span class="o">(</span><span class="n">chooserIntent</span><span class="o">,</span> <span class="n">INPUT_FILE_REQUEST_CODE</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//The undocumented magic method override</span>
+</span><span class='line'>        <span class="c1">//Eclipse will swear at you if you try to put @Override here</span>
+</span><span class='line'>        <span class="c1">// For Android 3.0+</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">openFileChooser</span><span class="o">(</span><span class="n">ValueCallback</span><span class="o">&lt;</span><span class="n">Uri</span><span class="o">&gt;</span> <span class="n">uploadMsg</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">mUploadMessage</span> <span class="o">=</span> <span class="n">uploadMsg</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">Intent</span> <span class="n">i</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Intent</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">ACTION_GET_CONTENT</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">i</span><span class="o">.</span><span class="na">addCategory</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">CATEGORY_OPENABLE</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">i</span><span class="o">.</span><span class="na">setType</span><span class="o">(</span><span class="s">&quot;image/</em>&quot;</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">WebViewActivity</span><span class="o">.</span><span class="na">this</span><span class="o">.</span><span class="na">startActivityForResult</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">createChooser</span><span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="s">&quot;Image Chooser&quot;</span><span class="o">),</span> <span class="n">FILECHOOSER_RESULTCODE</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// For Android 3.0+</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">openFileChooser</span><span class="o">(</span><span class="n">ValueCallback</span> <span class="n">uploadMsg</span><span class="o">,</span> <span class="n">String</span> <span class="n">acceptType</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">mUploadMessage</span> <span class="o">=</span> <span class="n">uploadMsg</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">Intent</span> <span class="n">i</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Intent</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">ACTION_GET_CONTENT</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">i</span><span class="o">.</span><span class="na">addCategory</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">CATEGORY_OPENABLE</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">i</span><span class="o">.</span><span class="na">setType</span><span class="o">(</span><span class="s">&quot;image/<em>&quot;</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">WebViewActivity</span><span class="o">.</span><span class="na">this</span><span class="o">.</span><span class="na">startActivityForResult</span><span class="o">(</span>
+</span><span class='line'>                    <span class="n">Intent</span><span class="o">.</span><span class="na">createChooser</span><span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="s">&quot;Image Chooser&quot;</span><span class="o">),</span>
+</span><span class='line'>                    <span class="n">FILECHOOSER_RESULTCODE</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//For Android 4.1</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kt">void</span> <span class="nf">openFileChooser</span><span class="o">(</span><span class="n">ValueCallback</span><span class="o">&lt;</span><span class="n">Uri</span><span class="o">&gt;</span> <span class="n">uploadMsg</span><span class="o">,</span> <span class="n">String</span> <span class="n">acceptType</span><span class="o">,</span> <span class="n">String</span> <span class="n">capture</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">mUploadMessage</span> <span class="o">=</span> <span class="n">uploadMsg</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">Intent</span> <span class="n">i</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Intent</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">ACTION_GET_CONTENT</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">i</span><span class="o">.</span><span class="na">addCategory</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">CATEGORY_OPENABLE</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">i</span><span class="o">.</span><span class="na">setType</span><span class="o">(</span><span class="s">&quot;image/</em>&quot;</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">WebViewActivity</span><span class="o">.</span><span class="na">this</span><span class="o">.</span><span class="na">startActivityForResult</span><span class="o">(</span><span class="n">Intent</span><span class="o">.</span><span class="na">createChooser</span><span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="s">&quot;Image Chooser&quot;</span><span class="o">),</span> <span class="n">WebViewActivity</span><span class="o">.</span><span class="na">FILECHOOSER_RESULTCODE</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">};</span>
+</span><span class='line'>
+</span></code></pre></td></tr></table></div></figure></p>
+
+<h3>选择结果的回调</h3>
+
+<p>  在onActivityResult中获取对应的选取文件的返回结果</p>
+
+<p>  <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityResult</span><span class="o">(</span><span class="kt">int</span> <span class="n">requestCode</span><span class="o">,</span> <span class="kt">int</span> <span class="n">resultCode</span><span class="o">,</span> <span class="n">Intent</span> <span class="n">data</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">requestCode</span> <span class="o">==</span> <span class="n">FILECHOOSER_RESULTCODE</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="kc">null</span> <span class="o">==</span> <span class="n">mUploadMessage</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">Uri</span> <span class="n">result</span> <span class="o">=</span> <span class="n">data</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="n">resultCode</span> <span class="o">!=</span> <span class="n">RESULT_OK</span> <span class="o">?</span> <span class="kc">null</span>
+</span><span class='line'>                    <span class="o">:</span> <span class="n">data</span><span class="o">.</span><span class="na">getData</span><span class="o">();</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">result</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="n">String</span> <span class="n">imagePath</span> <span class="o">=</span> <span class="n">ImageFilePath</span><span class="o">.</span><span class="na">getPath</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">result</span><span class="o">);</span>
+</span><span class='line'>                <span class="k">if</span> <span class="o">(!</span><span class="n">StrUtils</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">(</span><span class="n">imagePath</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">result</span> <span class="o">=</span> <span class="n">Uri</span><span class="o">.</span><span class="na">parse</span><span class="o">(</span><span class="s">&quot;file:///&quot;</span> <span class="o">+</span> <span class="n">imagePath</span><span class="o">);</span>
+</span><span class='line'>                <span class="o">}</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>            <span class="n">mUploadMessage</span><span class="o">.</span><span class="na">onReceiveValue</span><span class="o">(</span><span class="n">result</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">mUploadMessage</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">requestCode</span> <span class="o">==</span> <span class="n">INPUT_FILE_REQUEST_CODE</span> <span class="o">&amp;&amp;</span> <span class="n">mFilePathCallback</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="c1">// 5.0的回调</span>
+</span><span class='line'>            <span class="n">Uri</span><span class="o">[]</span> <span class="n">results</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="c1">// Check that the response is a good one</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">resultCode</span> <span class="o">==</span> <span class="n">Activity</span><span class="o">.</span><span class="na">RESULT_OK</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="k">if</span> <span class="o">(</span><span class="n">data</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="c1">// If there is not data, then we may have taken a photo</span>
+</span><span class='line'>                    <span class="k">if</span> <span class="o">(</span><span class="n">mCameraPhotoPath</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                        <span class="n">Logger</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="s">&quot;camera_photo_path&quot;</span><span class="o">,</span> <span class="n">mCameraPhotoPath</span><span class="o">);</span>
+</span><span class='line'>                        <span class="n">results</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Uri</span><span class="o">[]{</span><span class="n">Uri</span><span class="o">.</span><span class="na">parse</span><span class="o">(</span><span class="n">mCameraPhotoPath</span><span class="o">)};</span>
+</span><span class='line'>                    <span class="o">}</span>
+</span><span class='line'>                <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">String</span> <span class="n">dataString</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="na">getDataString</span><span class="o">();</span>
+</span><span class='line'>                    <span class="n">Logger</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="s">&quot;camera_dataString&quot;</span><span class="o">,</span> <span class="n">dataString</span><span class="o">);</span>
+</span><span class='line'>                    <span class="k">if</span> <span class="o">(</span><span class="n">dataString</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                        <span class="n">results</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Uri</span><span class="o">[]{</span><span class="n">Uri</span><span class="o">.</span><span class="na">parse</span><span class="o">(</span><span class="n">dataString</span><span class="o">)};</span>
+</span><span class='line'>                    <span class="o">}</span>
+</span><span class='line'>                <span class="o">}</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">mFilePathCallback</span><span class="o">.</span><span class="na">onReceiveValue</span><span class="o">(</span><span class="n">results</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">mFilePathCallback</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kd">super</span><span class="o">.</span><span class="na">onActivityResult</span><span class="o">(</span><span class="n">requestCode</span><span class="o">,</span> <span class="n">resultCode</span><span class="o">,</span> <span class="n">data</span><span class="o">);</span>
+</span><span class='line'>            <span class="k">return</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span></code></pre></td></tr></table></div></figure></p>
+
+<h3>文件路径的获取</h3>
+
+<p>  返回文件的解析，因为html页面需要的是文件，所以客户端需要返回的是对应文件的路径。这样，就会存在一个问题，在Android 4.4上，通过文件选择返回的结果都是对应以content开头格式的对应的路径。这就得需要咱们来进行判断，最终都需要转回成以file开头对应的格式文件。下面，我封装成了一个ImageFilePath的类，通过调用getPath方法来获取最终的结果。这个类的方法如下：</p>
+
+<p>  <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'>     <span class="cm">/<strong></span>
+</span><span class='line'><span class="cm">     * Method for return file path of Gallery image</span>
+</span><span class='line'><span class="cm">     <em></span>
+</span><span class='line'><span class="cm">     * @param context</span>
+</span><span class='line'><span class="cm">     * @param uri</span>
+</span><span class='line'><span class="cm">     * @return path of the selected image file from gallery</span>
+</span><span class='line'><span class="cm">     </em>/</span>
+</span><span class='line'>     <span class="kd">public</span> <span class="kd">static</span> <span class="n">String</span> <span class="nf">getPath</span><span class="o">(</span><span class="kd">final</span> <span class="n">Context</span> <span class="n">context</span><span class="o">,</span> <span class="kd">final</span> <span class="n">Uri</span> <span class="n">uri</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// check here to KITKAT or new version</span>
+</span><span class='line'>        <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">isKitKat</span> <span class="o">=</span> <span class="n">Build</span><span class="o">.</span><span class="na">VERSION</span><span class="o">.</span><span class="na">SDK_INT</span> <span class="o">&gt;=</span> <span class="n">Build</span><span class="o">.</span><span class="na">VERSION_CODES</span><span class="o">.</span><span class="na">KITKAT</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// DocumentProvider</span>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">isKitKat</span> <span class="o">&amp;&amp;</span> <span class="n">DocumentsContract</span><span class="o">.</span><span class="na">isDocumentUri</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">uri</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="c1">// ExternalStorageProvider</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">isExternalStorageDocument</span><span class="o">(</span><span class="n">uri</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>                <span class="kd">final</span> <span class="n">String</span> <span class="n">docId</span> <span class="o">=</span> <span class="n">DocumentsContract</span><span class="o">.</span><span class="na">getDocumentId</span><span class="o">(</span><span class="n">uri</span><span class="o">);</span>
+</span><span class='line'>                <span class="kd">final</span> <span class="n">String</span><span class="o">[]</span> <span class="n">split</span> <span class="o">=</span> <span class="n">docId</span><span class="o">.</span><span class="na">split</span><span class="o">(</span><span class="s">&quot;:&quot;</span><span class="o">);</span>
+</span><span class='line'>                <span class="kd">final</span> <span class="n">String</span> <span class="n">type</span> <span class="o">=</span> <span class="n">split</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="k">if</span> <span class="o">(</span><span class="s">&quot;primary&quot;</span><span class="o">.</span><span class="na">equalsIgnoreCase</span><span class="o">(</span><span class="n">type</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="k">return</span> <span class="n">Environment</span><span class="o">.</span><span class="na">getExternalStorageDirectory</span><span class="o">()</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span>
+</span><span class='line'>                            <span class="o">+</span> <span class="n">split</span><span class="o">[</span><span class="mi">1</span><span class="o">];</span>
+</span><span class='line'>                <span class="o">}</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>            <span class="c1">// DownloadsProvider</span>
+</span><span class='line'>            <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">isDownloadsDocument</span><span class="o">(</span><span class="n">uri</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="kd">final</span> <span class="n">String</span> <span class="n">id</span> <span class="o">=</span> <span class="n">DocumentsContract</span><span class="o">.</span><span class="na">getDocumentId</span><span class="o">(</span><span class="n">uri</span><span class="o">);</span>
+</span><span class='line'>                <span class="kd">final</span> <span class="n">Uri</span> <span class="n">contentUri</span> <span class="o">=</span> <span class="n">ContentUris</span><span class="o">.</span><span class="na">withAppendedId</span><span class="o">(</span>
+</span><span class='line'>                        <span class="n">Uri</span><span class="o">.</span><span class="na">parse</span><span class="o">(</span><span class="s">&quot;content://downloads/public_downloads&quot;</span><span class="o">),</span>
+</span><span class='line'>                        <span class="n">Long</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="n">id</span><span class="o">));</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="k">return</span> <span class="nf">getDataColumn</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">contentUri</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>            <span class="c1">// MediaProvider</span>
+</span><span class='line'>            <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">isMediaDocument</span><span class="o">(</span><span class="n">uri</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>                <span class="kd">final</span> <span class="n">String</span> <span class="n">docId</span> <span class="o">=</span> <span class="n">DocumentsContract</span><span class="o">.</span><span class="na">getDocumentId</span><span class="o">(</span><span class="n">uri</span><span class="o">);</span>
+</span><span class='line'>                <span class="kd">final</span> <span class="n">String</span><span class="o">[]</span> <span class="n">split</span> <span class="o">=</span> <span class="n">docId</span><span class="o">.</span><span class="na">split</span><span class="o">(</span><span class="s">&quot;:&quot;</span><span class="o">);</span>
+</span><span class='line'>                <span class="kd">final</span> <span class="n">String</span> <span class="n">type</span> <span class="o">=</span> <span class="n">split</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="n">Uri</span> <span class="n">contentUri</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>                <span class="k">if</span> <span class="o">(</span><span class="s">&quot;image&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">type</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">contentUri</span> <span class="o">=</span> <span class="n">MediaStore</span><span class="o">.</span><span class="na">Images</span><span class="o">.</span><span class="na">Media</span><span class="o">.</span><span class="na">EXTERNAL_CONTENT_URI</span><span class="o">;</span>
+</span><span class='line'>                <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="s">&quot;video&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">type</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">contentUri</span> <span class="o">=</span> <span class="n">MediaStore</span><span class="o">.</span><span class="na">Video</span><span class="o">.</span><span class="na">Media</span><span class="o">.</span><span class="na">EXTERNAL_CONTENT_URI</span><span class="o">;</span>
+</span><span class='line'>                <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="s">&quot;audio&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">type</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">contentUri</span> <span class="o">=</span> <span class="n">MediaStore</span><span class="o">.</span><span class="na">Audio</span><span class="o">.</span><span class="na">Media</span><span class="o">.</span><span class="na">EXTERNAL_CONTENT_URI</span><span class="o">;</span>
+</span><span class='line'>                <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="kd">final</span> <span class="n">String</span> <span class="n">selection</span> <span class="o">=</span> <span class="s">&quot;_id=?&quot;</span><span class="o">;</span>
+</span><span class='line'>                <span class="kd">final</span> <span class="n">String</span><span class="o">[]</span> <span class="n">selectionArgs</span> <span class="o">=</span> <span class="k">new</span> <span class="n">String</span><span class="o">[]</span> <span class="o">{</span> <span class="n">split</span><span class="o">[</span><span class="mi">1</span><span class="o">]</span> <span class="o">};</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="k">return</span> <span class="nf">getDataColumn</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">contentUri</span><span class="o">,</span> <span class="n">selection</span><span class="o">,</span>
+</span><span class='line'>                        <span class="n">selectionArgs</span><span class="o">);</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="c1">// MediaStore (and general)</span>
+</span><span class='line'>        <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="s">&quot;content&quot;</span><span class="o">.</span><span class="na">equalsIgnoreCase</span><span class="o">(</span><span class="n">uri</span><span class="o">.</span><span class="na">getScheme</span><span class="o">()))</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="c1">// Return the remote address</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">isGooglePhotosUri</span><span class="o">(</span><span class="n">uri</span><span class="o">))</span>
+</span><span class='line'>                <span class="k">return</span> <span class="n">uri</span><span class="o">.</span><span class="na">getLastPathSegment</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="k">return</span> <span class="nf">getDataColumn</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">uri</span><span class="o">,</span> <span class="kc">null</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="c1">// File</span>
+</span><span class='line'>        <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="s">&quot;file&quot;</span><span class="o">.</span><span class="na">equalsIgnoreCase</span><span class="o">(</span><span class="n">uri</span><span class="o">.</span><span class="na">getScheme</span><span class="o">()))</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">uri</span><span class="o">.</span><span class="na">getPath</span><span class="o">();</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="cm">/</strong></span>
+</span><span class='line'><span class="cm">     * Get the value of the data column for this Uri. This is useful for</span>
+</span><span class='line'><span class="cm">     * MediaStore Uris, and other file-based ContentProviders.</span>
+</span><span class='line'><span class="cm">     <em></span>
+</span><span class='line'><span class="cm">     * @param context</span>
+</span><span class='line'><span class="cm">     *            The context.</span>
+</span><span class='line'><span class="cm">     * @param uri</span>
+</span><span class='line'><span class="cm">     *            The Uri to query.</span>
+</span><span class='line'><span class="cm">     * @param selection</span>
+</span><span class='line'><span class="cm">     *            (Optional) Filter used in the query.</span>
+</span><span class='line'><span class="cm">     * @param selectionArgs</span>
+</span><span class='line'><span class="cm">     *            (Optional) Selection arguments used in the query.</span>
+</span><span class='line'><span class="cm">     * @return The value of the _data column, which is typically a file path.</span>
+</span><span class='line'><span class="cm">     </em>/</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">String</span> <span class="nf">getDataColumn</span><span class="o">(</span><span class="n">Context</span> <span class="n">context</span><span class="o">,</span> <span class="n">Uri</span> <span class="n">uri</span><span class="o">,</span>
+</span><span class='line'>                                       <span class="n">String</span> <span class="n">selection</span><span class="o">,</span> <span class="n">String</span><span class="o">[]</span> <span class="n">selectionArgs</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">Cursor</span> <span class="n">cursor</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>        <span class="kd">final</span> <span class="n">String</span> <span class="n">column</span> <span class="o">=</span> <span class="s">&quot;_data&quot;</span><span class="o">;</span>
+</span><span class='line'>        <span class="kd">final</span> <span class="n">String</span><span class="o">[]</span> <span class="n">projection</span> <span class="o">=</span> <span class="o">{</span> <span class="n">column</span> <span class="o">};</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">cursor</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="na">getContentResolver</span><span class="o">().</span><span class="na">query</span><span class="o">(</span><span class="n">uri</span><span class="o">,</span> <span class="n">projection</span><span class="o">,</span>
+</span><span class='line'>                    <span class="n">selection</span><span class="o">,</span> <span class="n">selectionArgs</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">cursor</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">cursor</span><span class="o">.</span><span class="na">moveToFirst</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>                <span class="kd">final</span> <span class="kt">int</span> <span class="n">index</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="na">getColumnIndexOrThrow</span><span class="o">(</span><span class="n">column</span><span class="o">);</span>
+</span><span class='line'>                <span class="k">return</span> <span class="n">cursor</span><span class="o">.</span><span class="na">getString</span><span class="o">(</span><span class="n">index</span><span class="o">);</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>        <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">cursor</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span>
+</span><span class='line'>                <span class="n">cursor</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="cm">/<strong></span>
+</span><span class='line'><span class="cm">     * @param uri</span>
+</span><span class='line'><span class="cm">     *            The Uri to check.</span>
+</span><span class='line'><span class="cm">     * @return Whether the Uri authority is ExternalStorageProvider.</span>
+</span><span class='line'><span class="cm">     */</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">boolean</span> <span class="nf">isExternalStorageDocument</span><span class="o">(</span><span class="n">Uri</span> <span class="n">uri</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="s">&quot;com.android.externalstorage.documents&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">uri</span>
+</span><span class='line'>                <span class="o">.</span><span class="na">getAuthority</span><span class="o">());</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="cm">/</strong></span>
+</span><span class='line'><span class="cm">     * @param uri</span>
+</span><span class='line'><span class="cm">     *            The Uri to check.</span>
+</span><span class='line'><span class="cm">     * @return Whether the Uri authority is DownloadsProvider.</span>
+</span><span class='line'><span class="cm">     <em>/</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">boolean</span> <span class="nf">isDownloadsDocument</span><span class="o">(</span><span class="n">Uri</span> <span class="n">uri</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="s">&quot;com.android.providers.downloads.documents&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">uri</span>
+</span><span class='line'>                <span class="o">.</span><span class="na">getAuthority</span><span class="o">());</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="cm">/**</span>
+</span><span class='line'><span class="cm">     * @param uri</span>
+</span><span class='line'><span class="cm">     *            The Uri to check.</span>
+</span><span class='line'><span class="cm">     * @return Whether the Uri authority is MediaProvider.</span>
+</span><span class='line'><span class="cm">     </em>/</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">boolean</span> <span class="nf">isMediaDocument</span><span class="o">(</span><span class="n">Uri</span> <span class="n">uri</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="s">&quot;com.android.providers.media.documents&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">uri</span>
+</span><span class='line'>                <span class="o">.</span><span class="na">getAuthority</span><span class="o">());</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="cm">/<em>*</span>
+</span><span class='line'><span class="cm">     * @param uri</span>
+</span><span class='line'><span class="cm">     *            The Uri to check.</span>
+</span><span class='line'><span class="cm">     * @return Whether the Uri authority is Google Photos.</span>
+</span><span class='line'><span class="cm">     </em>/</span>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">boolean</span> <span class="nf">isGooglePhotosUri</span><span class="o">(</span><span class="n">Uri</span> <span class="n">uri</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="s">&quot;com.google.android.apps.photos.content&quot;</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">uri</span>
+</span><span class='line'>                <span class="o">.</span><span class="na">getAuthority</span><span class="o">());</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span></code></pre></td></tr></table></div></figure></p>
+
+<h3>参考资料</h3>
+
+<p> <a href="http://stackoverflow.com/questions/5907369/file-upload-in-webview">file-upload-in-webview</a>
+ <a href="http://stackoverflow.com/questions/20067508/get-real-path-from-uri-android-kitkat-new-storage-access-framework">get-real-path-from-uri-android-kitkat-new-storage-access-framework</a></p>
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2015/07/07/Webview-support-input-type-file/">/blog/2015/07/07/Webview-support-input-type-file/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-07-07T07:27:44+00:00'><span class='date'>2015-07-07</span> <span class='time'>7:27 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2015/07/07/Webview-support-input-type-file/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2015/07/07/Webview-support-input-type-file/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/07/09/nested-fragments-onAcitivityResult/" title="Next Post: nested-fragments-onAcitivityResult">nested-fragments-onAcitivityResult &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2015/07/07/Webview-support-input-type-file/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2015/07/07/Webview-support-input-type-file/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

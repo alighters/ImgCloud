@@ -1,0 +1,1089 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>LeakCanary 浅析 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="LeakCanary 浅析 2018-03-16 4:46 pm | Comments 内存分析工具 关于内存分析，在 LeakCanary 之前，可以用到的工具主要以 MAT 为主，在新版的 AS 3.0 中，又提供了 Memory Profiler，可进一步帮助我们定位内存出现的问题。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2018/03/16/leakcanary-learn/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">LeakCanary 浅析</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2018-03-16T16:46:00+08:00'><span class='date'>2018-03-16</span> <span class='time'>4:46 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>内存分析工具</h2>
+
+<p>关于内存分析，在 LeakCanary 之前，可以用到的工具主要以 MAT 为主，在新版的 AS 3.0 中，又提供了 Memory Profiler，可进一步帮助我们定位内存出现的问题。</p>
+
+<!-- more -->
+
+
+<blockquote><p><a href="https://developer.android.com/studio/profile/memory-profiler.html#HeapDump">Memory Profiler</a>
+<a href="https://developer.android.com/studio/preview/features/android-profiler.html">Android Profiler in Android Studio 3.0</a></p>
+
+<p><a href="https://joyrun.github.io/2016/08/08/AndroidMemoryLeak/">利用Android Studio、MAT对Android进行内存泄漏检测 - 悦跑圈技术团队的博客 | Joyrun&rsquo;s Blog</a></p>
+
+<p><a href="https://developer.android.com/studio/profile/memory-profiler.html">View the Java Heap and Memory Allocations with Memory Profiler | Android Studio</a></p></blockquote>
+
+<h2>原理描述</h2>
+
+<p>其监听了 Application 中的 activityLifeCallback，在此会对得到的 activity 添加弱引用的方式，根据其特点来判断是否发生泄露。当泄露时，则 dump 出一份内存快照，得到 hprof 数据，再利用 square 的 haha 库，在另外的进程中，进行解析并显示。</p>
+
+<h2>主要流程</h2>
+
+<h3>1.类的定位</h3>
+
+<p>在 Android 的 application onCreate 时，我们一般会调用 LeakCanary 的 install 方法，其所作的工作：</p>
+
+<ul>
+<li>1.通过 application 生成一个 AndroidRefWatcherBuilder</li>
+<li>2.注册监听的 service 为 DisplayLeakService</li>
+<li>3.设置排除的引用 AndroidExcludedRefs</li>
+<li>4.调用 AndroidRefWatcherBuilder 的 buildAndInstall 方法，其会调用到 ActivityRefWatcher 的 install 方法：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'>  <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">install</span><span class="o">(</span><span class="n">Application</span> <span class="n">application</span><span class="o">,</span> <span class="n">RefWatcher</span> <span class="n">refWatcher</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">new</span> <span class="nf">ActivityRefWatcher</span><span class="o">(</span><span class="n">application</span><span class="o">,</span> <span class="n">refWatcher</span><span class="o">).</span><span class="na">watchActivities</span><span class="o">();</span>
+</span><span class='line'>  <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其会构造出 ActivityRefWatcher，然后调用其 watchActivities 方法：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'>  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">watchActivities</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="c1">// Make sure you don&#39;t get installed twice.</span>
+</span><span class='line'>    <span class="n">stopWatchingActivities</span><span class="o">();</span>
+</span><span class='line'>    <span class="n">application</span><span class="o">.</span><span class="na">registerActivityLifecycleCallbacks</span><span class="o">(</span><span class="n">lifecycleCallbacks</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里主要的工作便是给 application 注册 ActivityLifecycleCallbacks，此类主要重写了 Application.ActivityLifecycleCallbacks 的 onActivityDestoryed 方法:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span> <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onActivityDestroyed</span><span class="o">(</span><span class="n">Activity</span> <span class="n">activity</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'> <span class="n">ActivityRefWatcher</span><span class="o">.</span><span class="na">this</span><span class="o">.</span><span class="na">onActivityDestroyed</span><span class="o">(</span><span class="n">activity</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在它的 onActivityDestoryed 方法中，其主要调用 RefWatcher 类的 watch 方法，其对象便是传递进来的 activity。</p>
+
+<h3>2.类的监测</h3>
+
+<p>接下来便是关键的 RefWatcher 类了，在其 watch 方法中：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">watch</span><span class="o">(</span><span class="n">Object</span> <span class="n">watchedReference</span><span class="o">,</span> <span class="n">String</span> <span class="n">referenceName</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'> <span class="k">if</span> <span class="o">(</span><span class="k">this</span> <span class="o">==</span> <span class="n">DISABLED</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">return</span><span class="o">;</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'> <span class="n">checkNotNull</span><span class="o">(</span><span class="n">watchedReference</span><span class="o">,</span> <span class="s">&quot;watchedReference&quot;</span><span class="o">);</span>
+</span><span class='line'> <span class="n">checkNotNull</span><span class="o">(</span><span class="n">referenceName</span><span class="o">,</span> <span class="s">&quot;referenceName&quot;</span><span class="o">);</span>
+</span><span class='line'> <span class="kd">final</span> <span class="kt">long</span> <span class="n">watchStartNanoTime</span> <span class="o">=</span> <span class="n">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">();</span>
+</span><span class='line'> <span class="n">String</span> <span class="n">key</span> <span class="o">=</span> <span class="n">UUID</span><span class="o">.</span><span class="na">randomUUID</span><span class="o">().</span><span class="na">toString</span><span class="o">();</span>
+</span><span class='line'> <span class="n">retainedKeys</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">key</span><span class="o">);</span>
+</span><span class='line'> <span class="kd">final</span> <span class="n">KeyedWeakReference</span> <span class="n">reference</span> <span class="o">=</span>
+</span><span class='line'>     <span class="k">new</span> <span class="nf">KeyedWeakReference</span><span class="o">(</span><span class="n">watchedReference</span><span class="o">,</span> <span class="n">key</span><span class="o">,</span> <span class="n">referenceName</span><span class="o">,</span> <span class="n">queue</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">ensureGoneAsync</span><span class="o">(</span><span class="n">watchStartNanoTime</span><span class="o">,</span> <span class="n">reference</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里会将 watchedReference、referenceName、queue 包装成一个 KeyedWeakReference 对象。
+其中 queue 是一个成员变量 ReferenceQueue<Object> 的对象。而 KeyedWeakReference 是一个继承自 WeakReference 的类。</p>
+
+<p>关于 WeakReference 的官方描述：</p>
+
+<blockquote><p>Weak reference objects, which do not prevent their referents from being made finalizable, finalized, and then reclaimed. Weak references are most often used to implement canonicalizing mappings.</p>
+
+<p>Suppose that the garbage collector determines at a certain point in time that an object is weakly reachable. At that time it will atomically clear all weak references to that object and all weak references to any other weakly-reachable objects from which that object is reachable through a chain of strong and soft references. At the same time it will declare all of the formerly weakly-reachable objects to be finalizable. At the same time or at some later time it will enqueue those newly-cleared weak references that are registered with reference queues.</p></blockquote>
+
+<p>简单来说就是弱引用并不会影响对象的回收。当一个对象被回收之时，之前对此对象的持有弱引用的对象会被标记为 finalizable，与此同时或之后会将其添加至之前注册的 reference queue 中。</p>
+
+<p>这样的话，通过弱引用持有 activity，在 application 注册的 activitylifecallback 中，当 activity 退出时，在 referencequeue 里查询不在其中的 activity，此时，便确定了泄露的类。接下来便是 dump 出内存，来分析出泄露的路径了。</p>
+
+<h3>3.类的泄露定位</h3>
+
+<p>在 ensureGoneAsync 方法中，会执行如下方法：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Retryable</span><span class="o">.</span><span class="na">Result</span> <span class="nf">ensureGone</span><span class="o">(</span><span class="kd">final</span> <span class="n">KeyedWeakReference</span> <span class="n">reference</span><span class="o">,</span> <span class="kd">final</span> <span class="kt">long</span> <span class="n">watchStartNanoTime</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'> <span class="kt">long</span> <span class="n">gcStartNanoTime</span> <span class="o">=</span> <span class="n">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">();</span>
+</span><span class='line'> <span class="kt">long</span> <span class="n">watchDurationMs</span> <span class="o">=</span> <span class="n">NANOSECONDS</span><span class="o">.</span><span class="na">toMillis</span><span class="o">(</span><span class="n">gcStartNanoTime</span> <span class="o">-</span> <span class="n">watchStartNanoTime</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">removeWeaklyReachableReferences</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'> <span class="k">if</span> <span class="o">(</span><span class="n">debuggerControl</span><span class="o">.</span><span class="na">isDebuggerAttached</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>   <span class="c1">// The debugger can create false leaks.</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">RETRY</span><span class="o">;</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'> <span class="k">if</span> <span class="o">(</span><span class="n">gone</span><span class="o">(</span><span class="n">reference</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">DONE</span><span class="o">;</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'> <span class="n">gcTrigger</span><span class="o">.</span><span class="na">runGc</span><span class="o">();</span>
+</span><span class='line'> <span class="n">removeWeaklyReachableReferences</span><span class="o">();</span>
+</span><span class='line'> <span class="k">if</span> <span class="o">(!</span><span class="n">gone</span><span class="o">(</span><span class="n">reference</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>   <span class="kt">long</span> <span class="n">startDumpHeap</span> <span class="o">=</span> <span class="n">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">();</span>
+</span><span class='line'>   <span class="kt">long</span> <span class="n">gcDurationMs</span> <span class="o">=</span> <span class="n">NANOSECONDS</span><span class="o">.</span><span class="na">toMillis</span><span class="o">(</span><span class="n">startDumpHeap</span> <span class="o">-</span> <span class="n">gcStartNanoTime</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="n">File</span> <span class="n">heapDumpFile</span> <span class="o">=</span> <span class="n">heapDumper</span><span class="o">.</span><span class="na">dumpHeap</span><span class="o">();</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">heapDumpFile</span> <span class="o">==</span> <span class="n">RETRY_LATER</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>     <span class="c1">// Could not dump the heap.</span>
+</span><span class='line'>     <span class="k">return</span> <span class="n">RETRY</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>   <span class="kt">long</span> <span class="n">heapDumpDurationMs</span> <span class="o">=</span> <span class="n">NANOSECONDS</span><span class="o">.</span><span class="na">toMillis</span><span class="o">(</span><span class="n">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">()</span> <span class="o">-</span> <span class="n">startDumpHeap</span><span class="o">);</span>
+</span><span class='line'>   <span class="n">heapdumpListener</span><span class="o">.</span><span class="na">analyze</span><span class="o">(</span>
+</span><span class='line'>       <span class="k">new</span> <span class="nf">HeapDump</span><span class="o">(</span><span class="n">heapDumpFile</span><span class="o">,</span> <span class="n">reference</span><span class="o">.</span><span class="na">key</span><span class="o">,</span> <span class="n">reference</span><span class="o">.</span><span class="na">name</span><span class="o">,</span> <span class="n">excludedRefs</span><span class="o">,</span> <span class="n">watchDurationMs</span><span class="o">,</span>
+</span><span class='line'>           <span class="n">gcDurationMs</span><span class="o">,</span> <span class="n">heapDumpDurationMs</span><span class="o">));</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'> <span class="k">return</span> <span class="n">DONE</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中调用的 removeWeaklyReachableReferences 方法，则是对 refernceQueue 的排查：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">void</span> <span class="nf">removeWeaklyReachableReferences</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'> <span class="c1">// WeakReferences are enqueued as soon as the object to which they point to becomes weakly</span>
+</span><span class='line'> <span class="c1">// reachable. This is before finalization or garbage collection has actually happened.</span>
+</span><span class='line'> <span class="n">KeyedWeakReference</span> <span class="n">ref</span><span class="o">;</span>
+</span><span class='line'> <span class="k">while</span> <span class="o">((</span><span class="n">ref</span> <span class="o">=</span> <span class="o">(</span><span class="n">KeyedWeakReference</span><span class="o">)</span> <span class="n">queue</span><span class="o">.</span><span class="na">poll</span><span class="o">())</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">retainedKeys</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">ref</span><span class="o">.</span><span class="na">key</span><span class="o">);</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里从 queue 中，取出 KeyedWeakReference，并从 retainedKeys 集合中移除此 reference 对应的 key 值。</p>
+
+<p>而判断此 reference 是否移除则是通过 gone 方法判断：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kt">boolean</span> <span class="nf">gone</span><span class="o">(</span><span class="n">KeyedWeakReference</span> <span class="n">reference</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'> <span class="k">return</span> <span class="o">!</span><span class="n">retainedKeys</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="n">reference</span><span class="o">.</span><span class="na">key</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当集合中不包含此 WeakReference 对应的 key，则表示此弱引用持有的对象已被回收；否则表示有可能内存泄露。</p>
+
+<p>这里进行了再一步的判断，触发调用一下 gc 方法：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">gcTrigger</span><span class="o">.</span><span class="na">runGc</span><span class="o">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>而 gcTrigger 则是用的默认的 Default 实现：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">GcTrigger</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">GcTrigger</span> <span class="n">DEFAULT</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">GcTrigger</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="nd">@Override</span> <span class="kd">public</span> <span class="kt">void</span> <span class="nf">runGc</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      <span class="c1">// Code taken from AOSP FinalizationTest:</span>
+</span><span class='line'>      <span class="c1">// https://android.googlesource.com/platform/libcore/+/master/support/src/test/java/libcore/</span>
+</span><span class='line'>      <span class="c1">// java/lang/ref/FinalizationTester.java</span>
+</span><span class='line'>      <span class="c1">// System.gc() does not garbage collect every time. Runtime.gc() is</span>
+</span><span class='line'>      <span class="c1">// more likely to perfom a gc.</span>
+</span><span class='line'>      <span class="n">Runtime</span><span class="o">.</span><span class="na">getRuntime</span><span class="o">().</span><span class="na">gc</span><span class="o">();</span>
+</span><span class='line'>      <span class="n">enqueueReferences</span><span class="o">();</span>
+</span><span class='line'>      <span class="n">System</span><span class="o">.</span><span class="na">runFinalization</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">enqueueReferences</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      <span class="c1">// Hack. We don&#39;t have a programmatic way to wait for the reference queue daemon to move</span>
+</span><span class='line'>      <span class="c1">// references to the appropriate queues.</span>
+</span><span class='line'>      <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">Thread</span><span class="o">.</span><span class="na">sleep</span><span class="o">(</span><span class="mi">100</span><span class="o">);</span>
+</span><span class='line'>      <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">InterruptedException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">throw</span> <span class="k">new</span> <span class="nf">AssertionError</span><span class="o">();</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>  <span class="o">};</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kt">void</span> <span class="nf">runGc</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码中通过 <code>Runtime.getRuntime().gc()</code> 来触发 gc，再将当前线程 sleep 100 毫秒，来保证弱引用被添加至引用队列中，则执行 <code>System.runFinalization()</code> 方法，则触发调用对象的 finalize 方法。</p>
+
+<p>再触发 <code>gcTrigger.runGc()</code> 后，再调用一次 <code>removeWeaklyReachableReferences</code>，若是对象还未消失，那表示对象已经是真的泄露了。则需要导出内存快照进行分析了。</p>
+
+<h3>4.Dump内存快照</h3>
+
+<p>生成 heapDumpFile, 则是由 heapDumper 接口来负责：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">File</span> <span class="n">heapDumpFile</span> <span class="o">=</span> <span class="n">heapDumper</span><span class="o">.</span><span class="na">dumpHeap</span><span class="o">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>此 heapDumper 在 Android 中相关的实现，是由 AndroidHeapDumper 类实现：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span> <span class="kd">public</span> <span class="n">File</span> <span class="nf">dumpHeap</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'> <span class="n">File</span> <span class="n">heapDumpFile</span> <span class="o">=</span> <span class="n">leakDirectoryProvider</span><span class="o">.</span><span class="na">newHeapDumpFile</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'> <span class="k">if</span> <span class="o">(</span><span class="n">heapDumpFile</span> <span class="o">==</span> <span class="n">RETRY_LATER</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">RETRY_LATER</span><span class="o">;</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">FutureResult</span><span class="o">&lt;</span><span class="n">Toast</span><span class="o">&gt;</span> <span class="n">waitingForToast</span> <span class="o">=</span> <span class="k">new</span> <span class="n">FutureResult</span><span class="o">&lt;&gt;();</span>
+</span><span class='line'> <span class="n">showToast</span><span class="o">(</span><span class="n">waitingForToast</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="k">if</span> <span class="o">(!</span><span class="n">waitingForToast</span><span class="o">.</span><span class="na">wait</span><span class="o">(</span><span class="mi">5</span><span class="o">,</span> <span class="n">SECONDS</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">CanaryLog</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="s">&quot;Did not dump heap, too much time waiting for Toast.&quot;</span><span class="o">);</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">RETRY_LATER</span><span class="o">;</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">Toast</span> <span class="n">toast</span> <span class="o">=</span> <span class="n">waitingForToast</span><span class="o">.</span><span class="na">get</span><span class="o">();</span>
+</span><span class='line'> <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">Debug</span><span class="o">.</span><span class="na">dumpHprofData</span><span class="o">(</span><span class="n">heapDumpFile</span><span class="o">.</span><span class="na">getAbsolutePath</span><span class="o">());</span>
+</span><span class='line'>   <span class="n">cancelToast</span><span class="o">(</span><span class="n">toast</span><span class="o">);</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">heapDumpFile</span><span class="o">;</span>
+</span><span class='line'> <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">CanaryLog</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">e</span><span class="o">,</span> <span class="s">&quot;Could not dump heap&quot;</span><span class="o">);</span>
+</span><span class='line'>   <span class="c1">// Abort heap dump</span>
+</span><span class='line'>   <span class="k">return</span> <span class="n">RETRY_LATER</span><span class="o">;</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因为这里是在主线程所做的 dump 工作，所以这里给了个 waiting 的 toast，之后便是利用 Debug 类中的 dumpHprofData 方法，来生成内存快照 hprof 的数据。</p>
+
+<p>然后利用注册的 heapdumpListener 的 analyze 方法进行分析生成的此  HeapDump 对象：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span> <span class="kd">public</span> <span class="kt">void</span> <span class="nf">analyze</span><span class="o">(</span><span class="n">HeapDump</span> <span class="n">heapDump</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'> <span class="n">checkNotNull</span><span class="o">(</span><span class="n">heapDump</span><span class="o">,</span> <span class="s">&quot;heapDump&quot;</span><span class="o">);</span>
+</span><span class='line'> <span class="n">HeapAnalyzerService</span><span class="o">.</span><span class="na">runAnalysis</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">heapDump</span><span class="o">,</span> <span class="n">listenerServiceClass</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里会通过启动一个监听的 service（HeapAnalyzerService），而在 Android 中的 service 便是另一个进程的 serice。</p>
+
+<h3>5.引用分析</h3>
+
+<p>HeapAnalyzerService 是一个跨进程的 IntentSerice，在其 onHandleIntent 方法中:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span> <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">onHandleIntent</span><span class="o">(</span><span class="n">Intent</span> <span class="n">intent</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'> <span class="k">if</span> <span class="o">(</span><span class="n">intent</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">CanaryLog</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="s">&quot;HeapAnalyzerService received a null intent, ignoring.&quot;</span><span class="o">);</span>
+</span><span class='line'>   <span class="k">return</span><span class="o">;</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'> <span class="n">String</span> <span class="n">listenerClassName</span> <span class="o">=</span> <span class="n">intent</span><span class="o">.</span><span class="na">getStringExtra</span><span class="o">(</span><span class="n">LISTENER_CLASS_EXTRA</span><span class="o">);</span>
+</span><span class='line'> <span class="n">HeapDump</span> <span class="n">heapDump</span> <span class="o">=</span> <span class="o">(</span><span class="n">HeapDump</span><span class="o">)</span> <span class="n">intent</span><span class="o">.</span><span class="na">getSerializableExtra</span><span class="o">(</span><span class="n">HEAPDUMP_EXTRA</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">HeapAnalyzer</span> <span class="n">heapAnalyzer</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">HeapAnalyzer</span><span class="o">(</span><span class="n">heapDump</span><span class="o">.</span><span class="na">excludedRefs</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">AnalysisResult</span> <span class="n">result</span> <span class="o">=</span> <span class="n">heapAnalyzer</span><span class="o">.</span><span class="na">checkForLeak</span><span class="o">(</span><span class="n">heapDump</span><span class="o">.</span><span class="na">heapDumpFile</span><span class="o">,</span> <span class="n">heapDump</span><span class="o">.</span><span class="na">referenceKey</span><span class="o">);</span>
+</span><span class='line'> <span class="n">AbstractAnalysisResultService</span><span class="o">.</span><span class="na">sendResultToListener</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">listenerClassName</span><span class="o">,</span> <span class="n">heapDump</span><span class="o">,</span> <span class="n">result</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>获取到 HeapDump 后，生成一个 HeapAnalyzer 后，利用其 checkForLeak 方法，检查 heapDumpFile 中关于 referenceKey 的引用，生成一个分析的结果 AnalysisResult。</p>
+
+<p>关于 checkForLeak 方法：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm">* Searches the heap dump for a {@link KeyedWeakReference} instance with the corresponding key,</span>
+</span><span class='line'><span class="cm">* and then computes the shortest strong reference path from that instance to the GC roots.</span>
+</span><span class='line'><span class="cm">*/</span>
+</span><span class='line'><span class="kd">public</span> <span class="n">AnalysisResult</span> <span class="nf">checkForLeak</span><span class="o">(</span><span class="n">File</span> <span class="n">heapDumpFile</span><span class="o">,</span> <span class="n">String</span> <span class="n">referenceKey</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'> <span class="kt">long</span> <span class="n">analysisStartNanoTime</span> <span class="o">=</span> <span class="n">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'> <span class="k">if</span> <span class="o">(!</span><span class="n">heapDumpFile</span><span class="o">.</span><span class="na">exists</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">Exception</span> <span class="n">exception</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">IllegalArgumentException</span><span class="o">(</span><span class="s">&quot;File does not exist: &quot;</span> <span class="o">+</span> <span class="n">heapDumpFile</span><span class="o">);</span>
+</span><span class='line'>   <span class="k">return</span> <span class="nf">failure</span><span class="o">(</span><span class="n">exception</span><span class="o">,</span> <span class="n">since</span><span class="o">(</span><span class="n">analysisStartNanoTime</span><span class="o">));</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'> <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">HprofBuffer</span> <span class="n">buffer</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">MemoryMappedFileBuffer</span><span class="o">(</span><span class="n">heapDumpFile</span><span class="o">);</span>
+</span><span class='line'>   <span class="n">HprofParser</span> <span class="n">parser</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">HprofParser</span><span class="o">(</span><span class="n">buffer</span><span class="o">);</span>
+</span><span class='line'>   <span class="n">Snapshot</span> <span class="n">snapshot</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="na">parse</span><span class="o">();</span>
+</span><span class='line'>   <span class="n">deduplicateGcRoots</span><span class="o">(</span><span class="n">snapshot</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="n">Instance</span> <span class="n">leakingRef</span> <span class="o">=</span> <span class="n">findLeakingReference</span><span class="o">(</span><span class="n">referenceKey</span><span class="o">,</span> <span class="n">snapshot</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="c1">// False alarm, weak reference was cleared in between key check and heap dump.</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">leakingRef</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>     <span class="k">return</span> <span class="nf">noLeak</span><span class="o">(</span><span class="n">since</span><span class="o">(</span><span class="n">analysisStartNanoTime</span><span class="o">));</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="k">return</span> <span class="nf">findLeakTrace</span><span class="o">(</span><span class="n">analysisStartNanoTime</span><span class="o">,</span> <span class="n">snapshot</span><span class="o">,</span> <span class="n">leakingRef</span><span class="o">);</span>
+</span><span class='line'> <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Throwable</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">return</span> <span class="nf">failure</span><span class="o">(</span><span class="n">e</span><span class="o">,</span> <span class="n">since</span><span class="o">(</span><span class="n">analysisStartNanoTime</span><span class="o">));</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里开始利用 square 的 haha 库来开始解析 dump 出来的文件数据了。首先将 heapDumpFile 包装为 HprofBuffer，再利用 HprofParse 转换得到 Snapshot 数据。</p>
+
+<p>先利用 findLeakingReference 方法中，从 snapshot 中查看是否有 referenceKey。没有，则不存在泄露。</p>
+
+<p>若有的话，在 findLeakTrace 方法，来找到关于此类引用泄露的路径关系。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="n">AnalysisResult</span> <span class="nf">findLeakTrace</span><span class="o">(</span><span class="kt">long</span> <span class="n">analysisStartNanoTime</span><span class="o">,</span> <span class="n">Snapshot</span> <span class="n">snapshot</span><span class="o">,</span>
+</span><span class='line'>   <span class="n">Instance</span> <span class="n">leakingRef</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">ShortestPathFinder</span> <span class="n">pathFinder</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">ShortestPathFinder</span><span class="o">(</span><span class="n">excludedRefs</span><span class="o">);</span>
+</span><span class='line'> <span class="n">ShortestPathFinder</span><span class="o">.</span><span class="na">Result</span> <span class="n">result</span> <span class="o">=</span> <span class="n">pathFinder</span><span class="o">.</span><span class="na">findPath</span><span class="o">(</span><span class="n">snapshot</span><span class="o">,</span> <span class="n">leakingRef</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="c1">// False alarm, no strong reference path to GC Roots.</span>
+</span><span class='line'> <span class="k">if</span> <span class="o">(</span><span class="n">result</span><span class="o">.</span><span class="na">leakingNode</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="k">return</span> <span class="nf">noLeak</span><span class="o">(</span><span class="n">since</span><span class="o">(</span><span class="n">analysisStartNanoTime</span><span class="o">));</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">LeakTrace</span> <span class="n">leakTrace</span> <span class="o">=</span> <span class="n">buildLeakTrace</span><span class="o">(</span><span class="n">result</span><span class="o">.</span><span class="na">leakingNode</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">String</span> <span class="n">className</span> <span class="o">=</span> <span class="n">leakingRef</span><span class="o">.</span><span class="na">getClassObj</span><span class="o">().</span><span class="na">getClassName</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'> <span class="c1">// Side effect: computes retained size.</span>
+</span><span class='line'> <span class="n">snapshot</span><span class="o">.</span><span class="na">computeDominators</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">Instance</span> <span class="n">leakingInstance</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="na">leakingNode</span><span class="o">.</span><span class="na">instance</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'> <span class="kt">long</span> <span class="n">retainedSize</span> <span class="o">=</span> <span class="n">leakingInstance</span><span class="o">.</span><span class="na">getTotalRetainedSize</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'> <span class="c1">// TODO: check O sources and see what happened to android.graphics.Bitmap.mBuffer</span>
+</span><span class='line'> <span class="k">if</span> <span class="o">(</span><span class="n">SDK_INT</span> <span class="o">&lt;=</span> <span class="n">N_MR1</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">retainedSize</span> <span class="o">+=</span> <span class="n">computeIgnoredBitmapRetainedSize</span><span class="o">(</span><span class="n">snapshot</span><span class="o">,</span> <span class="n">leakingInstance</span><span class="o">);</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'> <span class="k">return</span> <span class="nf">leakDetected</span><span class="o">(</span><span class="n">result</span><span class="o">.</span><span class="na">excludingKnownLeaks</span><span class="o">,</span> <span class="n">className</span><span class="o">,</span> <span class="n">leakTrace</span><span class="o">,</span> <span class="n">retainedSize</span><span class="o">,</span>
+</span><span class='line'>     <span class="n">since</span><span class="o">(</span><span class="n">analysisStartNanoTime</span><span class="o">));</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>此方法中，</p>
+
+<h3>6.结果显示</h3>
+
+<p>之后将此结果 AnalysisResult 发送至 AbastractAnalysisResultService 的实现类中，此类的处理 Intent 方法如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span> <span class="kd">protected</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">onHandleIntent</span><span class="o">(</span><span class="n">Intent</span> <span class="n">intent</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'> <span class="n">HeapDump</span> <span class="n">heapDump</span> <span class="o">=</span> <span class="o">(</span><span class="n">HeapDump</span><span class="o">)</span> <span class="n">intent</span><span class="o">.</span><span class="na">getSerializableExtra</span><span class="o">(</span><span class="n">HEAP_DUMP_EXTRA</span><span class="o">);</span>
+</span><span class='line'> <span class="n">AnalysisResult</span> <span class="n">result</span> <span class="o">=</span> <span class="o">(</span><span class="n">AnalysisResult</span><span class="o">)</span> <span class="n">intent</span><span class="o">.</span><span class="na">getSerializableExtra</span><span class="o">(</span><span class="n">RESULT_EXTRA</span><span class="o">);</span>
+</span><span class='line'> <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">onHeapAnalyzed</span><span class="o">(</span><span class="n">heapDump</span><span class="o">,</span> <span class="n">result</span><span class="o">);</span>
+</span><span class='line'> <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+</span><span class='line'>   <span class="c1">//noinspection ResultOfMethodCallIgnored</span>
+</span><span class='line'>   <span class="n">heapDump</span><span class="o">.</span><span class="na">heapDumpFile</span><span class="o">.</span><span class="na">delete</span><span class="o">();</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其 onHeapAnalyzed 抽象方法由 DisplayLeakService 来实现：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span> <span class="kd">protected</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">onHeapAnalyzed</span><span class="o">(</span><span class="n">HeapDump</span> <span class="n">heapDump</span><span class="o">,</span> <span class="n">AnalysisResult</span> <span class="n">result</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'> <span class="n">String</span> <span class="n">leakInfo</span> <span class="o">=</span> <span class="n">leakInfo</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">heapDump</span><span class="o">,</span> <span class="n">result</span><span class="o">,</span> <span class="kc">true</span><span class="o">);</span>
+</span><span class='line'> <span class="n">CanaryLog</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="s">&quot;%s&quot;</span><span class="o">,</span> <span class="n">leakInfo</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="kt">boolean</span> <span class="n">resultSaved</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class='line'> <span class="kt">boolean</span> <span class="n">shouldSaveResult</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="na">leakFound</span> <span class="o">||</span> <span class="n">result</span><span class="o">.</span><span class="na">failure</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'> <span class="k">if</span> <span class="o">(</span><span class="n">shouldSaveResult</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">heapDump</span> <span class="o">=</span> <span class="n">renameHeapdump</span><span class="o">(</span><span class="n">heapDump</span><span class="o">);</span>
+</span><span class='line'>   <span class="n">resultSaved</span> <span class="o">=</span> <span class="n">saveResult</span><span class="o">(</span><span class="n">heapDump</span><span class="o">,</span> <span class="n">result</span><span class="o">);</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">PendingIntent</span> <span class="n">pendingIntent</span><span class="o">;</span>
+</span><span class='line'> <span class="n">String</span> <span class="n">contentTitle</span><span class="o">;</span>
+</span><span class='line'> <span class="n">String</span> <span class="n">contentText</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'> <span class="k">if</span> <span class="o">(!</span><span class="n">shouldSaveResult</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">contentTitle</span> <span class="o">=</span> <span class="n">getString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">leak_canary_no_leak_title</span><span class="o">);</span>
+</span><span class='line'>   <span class="n">contentText</span> <span class="o">=</span> <span class="n">getString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">leak_canary_no_leak_text</span><span class="o">);</span>
+</span><span class='line'>   <span class="n">pendingIntent</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'> <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">resultSaved</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">pendingIntent</span> <span class="o">=</span> <span class="n">DisplayLeakActivity</span><span class="o">.</span><span class="na">createPendingIntent</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">heapDump</span><span class="o">.</span><span class="na">referenceKey</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">result</span><span class="o">.</span><span class="na">failure</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>     <span class="n">String</span> <span class="n">size</span> <span class="o">=</span> <span class="n">formatShortFileSize</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">result</span><span class="o">.</span><span class="na">retainedHeapSize</span><span class="o">);</span>
+</span><span class='line'>     <span class="n">String</span> <span class="n">className</span> <span class="o">=</span> <span class="n">classSimpleName</span><span class="o">(</span><span class="n">result</span><span class="o">.</span><span class="na">className</span><span class="o">);</span>
+</span><span class='line'>     <span class="k">if</span> <span class="o">(</span><span class="n">result</span><span class="o">.</span><span class="na">excludedLeak</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">contentTitle</span> <span class="o">=</span> <span class="n">getString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">leak_canary_leak_excluded</span><span class="o">,</span> <span class="n">className</span><span class="o">,</span> <span class="n">size</span><span class="o">);</span>
+</span><span class='line'>     <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">contentTitle</span> <span class="o">=</span> <span class="n">getString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">leak_canary_class_has_leaked</span><span class="o">,</span> <span class="n">className</span><span class="o">,</span> <span class="n">size</span><span class="o">);</span>
+</span><span class='line'>     <span class="o">}</span>
+</span><span class='line'>   <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>     <span class="n">contentTitle</span> <span class="o">=</span> <span class="n">getString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">leak_canary_analysis_failed</span><span class="o">);</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>   <span class="n">contentText</span> <span class="o">=</span> <span class="n">getString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">leak_canary_notification_message</span><span class="o">);</span>
+</span><span class='line'> <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">contentTitle</span> <span class="o">=</span> <span class="n">getString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">leak_canary_could_not_save_title</span><span class="o">);</span>
+</span><span class='line'>   <span class="n">contentText</span> <span class="o">=</span> <span class="n">getString</span><span class="o">(</span><span class="n">R</span><span class="o">.</span><span class="na">string</span><span class="o">.</span><span class="na">leak_canary_could_not_save_text</span><span class="o">);</span>
+</span><span class='line'>   <span class="n">pendingIntent</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'> <span class="o">}</span>
+</span><span class='line'> <span class="c1">// New notification id every second.</span>
+</span><span class='line'> <span class="kt">int</span> <span class="n">notificationId</span> <span class="o">=</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="o">(</span><span class="n">SystemClock</span><span class="o">.</span><span class="na">uptimeMillis</span><span class="o">()</span> <span class="o">/</span> <span class="mi">1000</span><span class="o">);</span>
+</span><span class='line'> <span class="n">showNotification</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">contentTitle</span><span class="o">,</span> <span class="n">contentText</span><span class="o">,</span> <span class="n">pendingIntent</span><span class="o">,</span> <span class="n">notificationId</span><span class="o">);</span>
+</span><span class='line'> <span class="n">afterDefaultHandling</span><span class="o">(</span><span class="n">heapDump</span><span class="o">,</span> <span class="n">result</span><span class="o">,</span> <span class="n">leakInfo</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里检查获取的 AnalysisResult，根据其 leakFound 和 failure 来查看其是否泄漏。若存在，则创建一个跳转至 DisplayLeakActivity 的 Notification 的 intent。</p>
+
+<p>在 DisplayLeakActivity 的界面中，用于显示关于 Leaks 的列表，而其 List 数据，则是通过运行一个后台线程来读取保存的泄露文件列表，之后更新 UI 显示。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Override</span> <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'><span class="kd">final</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Leak</span><span class="o">&gt;</span> <span class="n">leaks</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;();</span>
+</span><span class='line'><span class="n">List</span><span class="o">&lt;</span><span class="n">File</span><span class="o">&gt;</span> <span class="n">files</span> <span class="o">=</span> <span class="n">leakDirectoryProvider</span><span class="o">.</span><span class="na">listFiles</span><span class="o">(</span><span class="k">new</span> <span class="nf">FilenameFilter</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>  <span class="nd">@Override</span> <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">accept</span><span class="o">(</span><span class="n">File</span> <span class="n">dir</span><span class="o">,</span> <span class="n">String</span> <span class="n">filename</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">filename</span><span class="o">.</span><span class="na">endsWith</span><span class="o">(</span><span class="s">&quot;.result&quot;</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">});</span>
+</span><span class='line'><span class="k">for</span> <span class="o">(</span><span class="n">File</span> <span class="n">resultFile</span> <span class="o">:</span> <span class="n">files</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">FileInputStream</span> <span class="n">fis</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>  <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">fis</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">FileInputStream</span><span class="o">(</span><span class="n">resultFile</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">ObjectInputStream</span> <span class="n">ois</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">ObjectInputStream</span><span class="o">(</span><span class="n">fis</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">HeapDump</span> <span class="n">heapDump</span> <span class="o">=</span> <span class="o">(</span><span class="n">HeapDump</span><span class="o">)</span> <span class="n">ois</span><span class="o">.</span><span class="na">readObject</span><span class="o">();</span>
+</span><span class='line'>    <span class="n">AnalysisResult</span> <span class="n">result</span> <span class="o">=</span> <span class="o">(</span><span class="n">AnalysisResult</span><span class="o">)</span> <span class="n">ois</span><span class="o">.</span><span class="na">readObject</span><span class="o">();</span>
+</span><span class='line'>    <span class="n">leaks</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="nf">Leak</span><span class="o">(</span><span class="n">heapDump</span><span class="o">,</span> <span class="n">result</span><span class="o">,</span> <span class="n">resultFile</span><span class="o">));</span>
+</span><span class='line'>  <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="o">|</span> <span class="n">ClassNotFoundException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="c1">// Likely a change in the serializable result class.</span>
+</span><span class='line'>    <span class="c1">// Let&#39;s remove the files, we can&#39;t read them anymore.</span>
+</span><span class='line'>    <span class="kt">boolean</span> <span class="n">deleted</span> <span class="o">=</span> <span class="n">resultFile</span><span class="o">.</span><span class="na">delete</span><span class="o">();</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">deleted</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">CanaryLog</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">e</span><span class="o">,</span> <span class="s">&quot;Could not read result file %s, deleted it.&quot;</span><span class="o">,</span> <span class="n">resultFile</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">CanaryLog</span><span class="o">.</span><span class="na">d</span><span class="o">(</span><span class="n">e</span><span class="o">,</span> <span class="s">&quot;Could not read result file %s, could not delete it either.&quot;</span><span class="o">,</span>
+</span><span class='line'>          <span class="n">resultFile</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">fis</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">fis</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+</span><span class='line'>      <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">IOException</span> <span class="n">ignored</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'><span class="n">Collections</span><span class="o">.</span><span class="na">sort</span><span class="o">(</span><span class="n">leaks</span><span class="o">,</span> <span class="k">new</span> <span class="n">Comparator</span><span class="o">&lt;</span><span class="n">Leak</span><span class="o">&gt;()</span> <span class="o">{</span>
+</span><span class='line'>  <span class="nd">@Override</span> <span class="kd">public</span> <span class="kt">int</span> <span class="nf">compare</span><span class="o">(</span><span class="n">Leak</span> <span class="n">lhs</span><span class="o">,</span> <span class="n">Leak</span> <span class="n">rhs</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">Long</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="n">rhs</span><span class="o">.</span><span class="na">resultFile</span><span class="o">.</span><span class="na">lastModified</span><span class="o">())</span>
+</span><span class='line'>        <span class="o">.</span><span class="na">compareTo</span><span class="o">(</span><span class="n">lhs</span><span class="o">.</span><span class="na">resultFile</span><span class="o">.</span><span class="na">lastModified</span><span class="o">());</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">});</span>
+</span><span class='line'><span class="n">mainHandler</span><span class="o">.</span><span class="na">post</span><span class="o">(</span><span class="k">new</span> <span class="nf">Runnable</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>  <span class="nd">@Override</span> <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">inFlight</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">LoadLeaks</span><span class="o">.</span><span class="na">this</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">if</span> <span class="o">(</span><span class="n">activityOrNull</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">activityOrNull</span><span class="o">.</span><span class="na">leaks</span> <span class="o">=</span> <span class="n">leaks</span><span class="o">;</span>
+</span><span class='line'>      <span class="n">activityOrNull</span><span class="o">.</span><span class="na">updateUi</span><span class="o">();</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">});</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>学习资料</h2>
+
+<ul>
+<li><a href="https://academy.realm.io/cn/posts/droidcon-ricau-memory-leaks-leakcanary/">用 LeakCanary 检测内存泄漏</a></li>
+<li><a href="http://blog.csdn.net/fearGod/article/details/46364599">Android System.gc()注意点 - CSDN博客</a></li>
+</ul>
+
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2018/03/16/leakcanary-learn/">/blog/2018/03/16/leakcanary-learn/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2018-03-16T16:46:00+08:00'><span class='date'>2018-03-16</span> <span class='time'>4:46 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2018/03/16/leakcanary-learn/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2018/03/16/leakcanary-learn/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/03/02/kotlin-dsl-learn/" title="Previous Post: Kotlin DSL 学习">&laquo; Kotlin DSL 学习</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2018/06/28/react-native-message-theory/" title="Next Post: RN 通信">RN 通信 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2018/03/16/leakcanary-learn/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2018/03/16/leakcanary-learn/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

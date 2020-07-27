@@ -1,0 +1,436 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>编程之法-字符串 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="编程之法-字符串 2016-10-27 2:11 pm | Comments 字符串的旋转 题：abcedf -> edfabc 1.蛮力移位 原理：将后一个位置的字符向前移动，第一个字符放置在最后的位置上。
+即分三步完成 bcedfa -> cedfab -> edfabc 2. 三步反转 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2016/10/27/algorithm-string/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">编程之法-字符串</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-10-27T14:11:00+08:00'><span class='date'>2016-10-27</span> <span class='time'>2:11 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>字符串的旋转</h2>
+
+<p>题：abcedf -> edfabc</p>
+
+<h3>1.蛮力移位</h3>
+
+<p>原理：将后一个位置的字符向前移动，第一个字符放置在最后的位置上。
+即分三步完成 bcedfa -> cedfab -> edfabc</p>
+
+<!-- more -->
+
+
+<h3>2. 三步反转</h3>
+
+<p>拆分为两段即 abc 与 edf，对他俩分别进行反转得到 cbafde；再对整个进行反转，得到结果</p>
+
+<p>练习：单词翻转
+“I am a student.&ldquo; -> "student. a am I&rdquo;.
+思路：按空格分隔，分别进行反转，再整理反转。</p>
+
+<h2>字符串的包含。</h2>
+
+<p>题：a: &ldquo;ABCD&rdquo;, b:&ldquo;BAD&rdquo; 则包含为true;
+    若b 是 ”BCE", 为 false;
+    若b 是 “AA", 为true. 即字符串b 中出现的字符都必须按在 a 中出现。</p>
+
+<h3>1.蛮力轮询</h3>
+
+<h3>2.排序后轮询</h3>
+
+<p>排序使用快排，需要 O(mlogm) + O(nlogn), 线性扫描需要 O(m+n)次操作。</p>
+
+<h3>3.素数相乘</h3>
+
+<p>原理：利用素数相乘取余数的结果来判断，是否存在。（若是余数为0，表示存在，若是余数不为0，则表示不存在）</p>
+
+<p>分步：
+1.将 a 中出现的字符对应到 26 个素数当中，并相乘得到结果
+2.遍历 b 中的字符，取得相应的素数，与上一步乘积的结果，取余进行判断。</p>
+
+<p>现实不可行：前16个素数相乘的结果会超出 long 能表示的结果。</p>
+
+<h3>4.位运算法</h3>
+
+<p>原理：将 a 中的字符存至 hash 表中，b 来进行获取判断。
+位运算：先用一个 int 来表示最终的结果，因为 Int 为32位，完全满足 26 个字符的要求，对 a 中的字符，对应 26 个字符的顺序进行移位放置 a 中。
+即 hash |= (1 &lt;&lt; a[i] - &lsquo;A&rsquo;)
+再进行 b 中判断的时候，直接进行相与，即可得到结果。</p>
+
+<h2>字符串的全排列</h2>
+
+<h3>1.递归实现</h3>
+
+<h3>2.字典序排列</h3>
+
+<p>原理：起点字典序最小的排列 1 ~ n 如 ”12345“；终点 n ~ 1, 如 ”54321“。 执行过程就是获取比当前字典序大的下一个排列。</p>
+
+<p>举例： 21543，
+1. 获得第一个升序的数字为 1
+2. 比 1 大，并在 1 右边的最小一个数自，得到 3
+3. 它俩交换，得到 23541，
+4. 翻转 541 ，得到 23145.</p>
+
+<p>两种解法的都一共有 n! 种情况，复杂度为 O(n!)。</p>
+
+<p>练习</p>
+
+<h3>1. 字典序的所有排列</h3>
+
+<p>如 &ldquo;ab&rdquo;, 任意排列为 aa, ab, ba，bb。</p>
+
+<p>采用递归的思想，当字符的个数为 2 时，输出结果。</p>
+
+<h3>2. 字符的所有组合</h3>
+
+<p>输入 &ldquo;abc&rdquo;, 组合有 a,b,c,ab,ac,bc,abc</p>
+
+<h3>3.序列的打印</h3>
+
+<p>(a),(b),&copy;
+(a,b),(a,c)(b,c)
+(a,b,c)</p>
+
+<h2>字符串转成整数</h2>
+
+<p>&ldquo;123&rdquo; -> 123</p>
+
+<h3>乘以进制10</h3>
+
+<p>其他问题：溢出，正负</p>
+
+<h2>回文判断</h2>
+
+<h3>1. 两头往中间</h3>
+
+<h3>2. 中间往两头</h3>
+
+<p>练习
+1. 链表回文
+2. 栈回文</p>
+
+<h2>最长回文子串</h2>
+
+<h3>中心扩展法</h3>
+
+<p>需要考虑奇数还是偶数</p>
+
+<h3>Manacher 算法</h3>
+
+<p>将字符串间隔添加特殊字符，变为一个长度为奇数长度的新的字符串。
+如 S[i]: # 1 # 2 # 2 # 1 # 2 # 3 # 2 # 1 #
+得 P[i]: 1 2 1 2 5 2 1 4 1 2 1 6 1 2 1 2 1
+其中 P[i] 来记录为字符 S[i] 为中心的最长回文子串向左或向右扩张的长度（包括 S[i]）</p>
+
+<p>一个利用中间变量特殊技巧，增加两个变量 id 和 mx, id 表示最大回文子串中心的位置，mx 为 id + P[id], 即最大回文子串的右边界。会得到一个重要的结论： 如果 mx > i, 那么 P[i] >= min(P[2 * id -i], mx - i)。</p>
+
+<h2>参考资料</h2>
+
+<ul>
+<li><a href="https://book.douban.com/subject/26641732/">编程之法</a></li>
+<li><a href="https://github.com/julycoding/The-Art-Of-Programming-By-July">The-Art-Of-Programming-By-July
+</a></li>
+</ul>
+
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2016/10/27/algorithm-string/">/blog/2016/10/27/algorithm-string/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2016-10-27T14:11:00+08:00'><span class='date'>2016-10-27</span> <span class='time'>2:11 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/suan-fa/'>算法</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2016/10/27/algorithm-string/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2016/10/27/algorithm-string/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/09/26/ruby-code-refactor/" title="Previous Post: Ruby 代码重构">&laquo; Ruby 代码重构</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/10/27/terminal-command/" title="Next Post: Mac 下 terminal 快捷键">Mac 下 terminal 快捷键 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2016/10/27/algorithm-string/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2016/10/27/algorithm-string/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

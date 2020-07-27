@@ -1,0 +1,1459 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Android单元测试-Mockito 浅析 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="Android单元测试-Mockito 浅析 2016-09-08 1:17 pm | Comments 本文主要针对测试框架 Mockito 在实践中的经常用到的代码做一示例汇总，并对其实现思想做以简单的分析。 介绍 用来为提供函数返回结果的模拟（mock）及对函数调用过程的验证。 关键词 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2016/09/08/unit-test-mockito/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Android单元测试-Mockito 浅析</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-09-08T13:17:00+08:00'><span class='date'>2016-09-08</span> <span class='time'>1:17 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>本文主要针对测试框架 <code>Mockito</code> 在实践中的经常用到的代码做一示例汇总，并对其实现思想做以简单的分析。</p>
+
+<h2>介绍</h2>
+
+<p>用来为提供函数返回结果的模拟（mock）及对函数调用过程的验证。</p>
+
+<p><strong> 关键词 </strong>
++ mock : 针对真实的类或者对象，创建一个模拟（代理）的对象。
++ stub :  针对一个类或者对象的方法，进行模拟调用及输出。</p>
+
+<!-- more -->
+
+
+<p>其中 mock 针对是类和队形，而 stub 针对的是行为。他们具体在此框架中的体现分别是: 1) mock 对应的是类 <code>Mockito</code> 中的 <code>mock</code> 及 <code>spy</code> 方法；2）stub 对应是 <code>Mockito</code> 中的 <code>when</code> 及 <code>doReturn</code> 等系列方法。</p>
+
+<blockquote><p>PS: 这里注意与框架 Robolectric 的 <code>Shadow</code> 以区别。</p></blockquote>
+
+<h2>引入</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">testCompile</span> <span class="err">&#39;</span><span class="n">org</span><span class="o">.</span><span class="na">mockito</span><span class="o">:</span><span class="n">mockito</span><span class="o">-</span><span class="nl">core:</span><span class="mf">2.1</span><span class="o">.</span><span class="mi">0</span><span class="o">-</span><span class="n">beta</span><span class="o">.</span><span class="mi">119</span><span class="err">&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>代码示例：<a href="https://github.com/alighters/AndroidDemos/blob/master/mockito/src/test/java/lighters/mockito/MockTest.java">地址</a></h2>
+
+<h3>1. Mock 方法的使用</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Test</span>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">testMock</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">List</span> <span class="n">mockedList</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">//using mock object</span>
+</span><span class='line'>  <span class="n">mockedList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;one&quot;</span><span class="o">);</span>
+</span><span class='line'>  <span class="n">mockedList</span><span class="o">.</span><span class="na">clear</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">//verification</span>
+</span><span class='line'>  <span class="n">verify</span><span class="o">(</span><span class="n">mockedList</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;one&quot;</span><span class="o">);</span>
+</span><span class='line'>  <span class="n">verify</span><span class="o">(</span><span class="n">mockedList</span><span class="o">).</span><span class="na">clear</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>可直接通过接口来进行 mock。一旦创建了一个 mock 之后，他会记住所有它的操作，则我们就可以通过 verify 方法来检查相应方法是否调用。</p>
+
+<h3>2.打桩（Stub），即调用返回的结果模拟</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">LinkedList</span> <span class="n">mockedList</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">LinkedList</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//stubbing</span>
+</span><span class='line'><span class="n">when</span><span class="o">(</span><span class="n">mockedList</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">)).</span><span class="na">thenReturn</span><span class="o">(</span><span class="s">&quot;first&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">when</span><span class="o">(</span><span class="n">mockedList</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">1</span><span class="o">)).</span><span class="na">thenThrow</span><span class="o">(</span><span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">());</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//following prints &quot;first&quot;</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">mockedList</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">));</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//following throws runtime exception</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">mockedList</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">1</span><span class="o">));</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//following prints &quot;null&quot; because get(999) was not stubbed</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">mockedList</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">999</span><span class="o">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里指定关键字 <code>when</code> 返回一个 <code>OngoingStubbing</code> 接口，通过其提供的 <code>thenReturn</code>，<code>thenThrow</code>，<code>thenCallRealMethod</code> 及自定义 <code>thenAnswer</code> 来返回相应的结果。</p>
+
+<h3>3.参数匹配</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">LinkedList</span> <span class="n">mockedList</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">LinkedList</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'><span class="c1">//stubbing using built-in anyInt() argument matcher</span>
+</span><span class='line'><span class="n">when</span><span class="o">(</span><span class="n">mockedList</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">anyInt</span><span class="o">())).</span><span class="na">thenReturn</span><span class="o">(</span><span class="s">&quot;element&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//following prints &quot;element&quot;</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">mockedList</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">999</span><span class="o">));</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//you can also verify using an argument matcher</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mockedList</span><span class="o">).</span><span class="na">get</span><span class="o">(</span><span class="n">anyInt</span><span class="o">());</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>有时我们针对函数参数的模拟，不是一个特定的数值，而是一个范围。这时可以范围型的参数匹配，在 <code>ArgumentMatchers</code> 中，提供了一组不同类型的 any 操作。如：<code>any(Class)</code>，<code>anyObject()</code>，<code>anyVararg()</code>，<code>anyChar()</code>，<code>anyInt()</code>，<code>anyBoolean()</code>，<code>anyCollectionOf(Class)</code>等。</p>
+
+<h3>4.调用次数</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">LinkedList</span> <span class="n">mockedList</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">LinkedList</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//using mock</span>
+</span><span class='line'><span class="n">mockedList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;once&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">mockedList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;twice&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">mockedList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;twice&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">mockedList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;three times&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">mockedList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;three times&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">mockedList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;three times&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//following two verifications work exactly the same - times(1) is used by default</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mockedList</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;once&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mockedList</span><span class="o">,</span> <span class="n">times</span><span class="o">(</span><span class="mi">1</span><span class="o">)).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;once&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//exact number of invocations verification</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mockedList</span><span class="o">,</span> <span class="n">times</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;twice&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mockedList</span><span class="o">,</span> <span class="n">times</span><span class="o">(</span><span class="mi">3</span><span class="o">)).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;three times&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//verification using never(). never() is an alias to times(0)</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mockedList</span><span class="o">,</span> <span class="n">never</span><span class="o">()).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;never happened&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//verification using atLeast()/atMost()</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mockedList</span><span class="o">,</span> <span class="n">atLeastOnce</span><span class="o">()).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;three times&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mockedList</span><span class="o">,</span> <span class="n">atLeast</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;twice&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mockedList</span><span class="o">,</span> <span class="n">atMost</span><span class="o">(</span><span class="mi">5</span><span class="o">)).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;three times&quot;</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过 <code>times</code>，<code>never</code>，<code>atLeastOnce</code>，<code>atLeast</code>，<code>atMost</code> 这些方法，我们可以对一个方法的调用次数做判断。其中 <code>times(1)</code> 是默认的。</p>
+
+<h3>5.方法添加异常</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">LinkedList</span> <span class="n">mockedList</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">LinkedList</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'><span class="n">doThrow</span><span class="o">(</span><span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">()).</span><span class="na">when</span><span class="o">(</span><span class="n">mockedList</span><span class="o">).</span><span class="na">clear</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//following throws RuntimeException:</span>
+</span><span class='line'><span class="n">mockedList</span><span class="o">.</span><span class="na">clear</span><span class="o">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用 <code>doThrow</code> 可以为一个方法的调用添加异常。这样可以验证我们的代码对异常的处理能力如何。</p>
+
+<h3>6.顺序验证</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">// A. Single mock whose methods must be invoked in a particular order</span>
+</span><span class='line'><span class="n">List</span> <span class="n">singleMock</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//using a single mock</span>
+</span><span class='line'><span class="n">singleMock</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;was added first&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">singleMock</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;was added second&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//create an inOrder verifier for a single mock</span>
+</span><span class='line'><span class="n">InOrder</span> <span class="n">inOrder1</span> <span class="o">=</span> <span class="n">inOrder</span><span class="o">(</span><span class="n">singleMock</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//following will make sure that add is first called with &quot;was added first, then with &quot;was added second&quot;</span>
+</span><span class='line'><span class="n">inOrder1</span><span class="o">.</span><span class="na">verify</span><span class="o">(</span><span class="n">singleMock</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;was added first&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">inOrder1</span><span class="o">.</span><span class="na">verify</span><span class="o">(</span><span class="n">singleMock</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;was added second&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// B. Multiple mocks that must be used in a particular order</span>
+</span><span class='line'><span class="n">List</span> <span class="n">firstMock</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'><span class="n">List</span> <span class="n">secondMock</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//using mocks</span>
+</span><span class='line'><span class="n">firstMock</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;was called first&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">secondMock</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;was called second&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//create inOrder object passing any mocks that need to be verified in order</span>
+</span><span class='line'><span class="n">inOrder1</span> <span class="o">=</span> <span class="n">inOrder</span><span class="o">(</span><span class="n">firstMock</span><span class="o">,</span> <span class="n">secondMock</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//following will make sure that firstMock was called before secondMock</span>
+</span><span class='line'><span class="n">inOrder1</span><span class="o">.</span><span class="na">verify</span><span class="o">(</span><span class="n">firstMock</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;was called first&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">inOrder1</span><span class="o">.</span><span class="na">verify</span><span class="o">(</span><span class="n">secondMock</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;was called second&quot;</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>若是我们需要对调用的顺序做判断，就可以使用 <code>InOrder</code> 这个类，通过 Mockito 的方法 <code>inOrder</code>，来作为其参数，这样我们的方法就必须按顺序调用。试试将上述代码的 verify 顺序交换，看看会发生什么。</p>
+
+<h3>7.调用从未发生</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">List</span> <span class="n">mockOne</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'><span class="n">List</span> <span class="n">mockTwo</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'><span class="n">List</span> <span class="n">mockThree</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//using mocks - only mockOne is interacted</span>
+</span><span class='line'><span class="n">mockOne</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;one&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//ordinary verification</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mockOne</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;one&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//verify that method was never called on a mock</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mockOne</span><span class="o">,</span> <span class="n">never</span><span class="o">()).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;two&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//verify that other mocks were not interacted</span>
+</span><span class='line'><span class="n">verifyZeroInteractions</span><span class="o">(</span><span class="n">mockTwo</span><span class="o">,</span> <span class="n">mockThree</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过 <code>never</code> 来指定一个方法从未发生调用，使用 <code>verifyZeroInteractions</code> 来确定对象的实例从未发生调用</p>
+
+<h3>8. 没有更多调用</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">List</span> <span class="n">mockedList</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//using mocks</span>
+</span><span class='line'><span class="n">mockedList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;one&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">mockedList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;two&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mockedList</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;one&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//following verification will fail</span>
+</span><span class='line'><span class="n">verifyNoMoreInteractions</span><span class="o">(</span><span class="n">mockedList</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码中的 <code>verifyNoMoreInteractions</code> 会发生错误，原因就在于未对 <code>add("two")</code> 做验证，我们在 <code>verify(mockedList).add("one");</code> 代码后添加 <code>add(two)</code>的方法验证，最后的测试通过。</p>
+
+<blockquote><p>1.这里的 verify <code>add("one")</code> 及 <code>add("two)</code>顺序是无所谓的。
+2.可以看出的是这个测试方法的不精确性，尽力避免使用。</p></blockquote>
+
+<h3>9. @Mock 注解</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="kd">public</span> <span class="kd">class</span> <span class="nc">ArticleManagerTest</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>       <span class="nd">@Mock</span> <span class="kd">private</span> <span class="n">ArticleCalculator</span> <span class="n">calculator</span><span class="o">;</span>
+</span><span class='line'>       <span class="nd">@Mock</span> <span class="kd">private</span> <span class="n">ArticleDatabase</span> <span class="n">database</span><span class="o">;</span>
+</span><span class='line'>       <span class="nd">@Mock</span> <span class="kd">private</span> <span class="n">UserProvider</span> <span class="n">userProvider</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>       <span class="kd">private</span> <span class="n">ArticleManager</span> <span class="n">manager</span><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>可以通过对属性添加 @Mock 注解来避免使用 mock 方法，不过不要忘了 initMocks 方法的调用：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">MockitoAnnotations</span><span class="o">.</span><span class="na">initMocks</span><span class="o">(</span><span class="n">testClass</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>10. 连续调用</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">HashMap</span> <span class="n">mock</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">HashMap</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'><span class="n">when</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="s">&quot;some arg&quot;</span><span class="o">)).</span><span class="na">thenThrow</span><span class="o">(</span><span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="s">&quot;foo&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//First call: throws runtime exception:</span>
+</span><span class='line'><span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">mock</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="s">&quot;some arg&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">e</span><span class="o">.</span><span class="na">toString</span><span class="o">());</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//Second call: prints &quot;foo&quot;</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="s">&quot;some arg&quot;</span><span class="o">));</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//Any consecutive call: prints &quot;foo&quot; as well (last stubbing wins).</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="s">&quot;some arg&quot;</span><span class="o">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过对 mock 一直添加 <code>then</code> 的返回值，使得我们按顺序每次调用的返回结果都不同。另外，一个简单的写法， <code>thenReturn</code> 支持数组参数，来设定结果依次返回：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">when</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">someMethod</span><span class="o">(</span><span class="s">&quot;some arg&quot;</span><span class="o">))</span> <span class="o">.</span><span class="na">thenReturn</span><span class="o">(</span><span class="s">&quot;one&quot;</span><span class="o">,</span> <span class="s">&quot;two&quot;</span><span class="o">,</span> <span class="s">&quot;three&quot;</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>11.Answer 结果返回</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">HashMap</span> <span class="n">mock</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">HashMap</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">when</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">anyString</span><span class="o">())).</span><span class="na">thenAnswer</span><span class="o">(</span><span class="k">new</span> <span class="n">Answer</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;()</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="nd">@Override</span>
+</span><span class='line'>   <span class="kd">public</span> <span class="n">Object</span> <span class="nf">answer</span><span class="o">(</span><span class="n">InvocationOnMock</span> <span class="n">invocation</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Throwable</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">Object</span><span class="o">[]</span> <span class="n">args</span> <span class="o">=</span> <span class="n">invocation</span><span class="o">.</span><span class="na">getArguments</span><span class="o">();</span>
+</span><span class='line'>       <span class="n">Object</span> <span class="n">mock</span> <span class="o">=</span> <span class="n">invocation</span><span class="o">.</span><span class="na">getMock</span><span class="o">();</span>
+</span><span class='line'>       <span class="k">return</span> <span class="s">&quot;called with arguments: &quot;</span> <span class="o">+</span> <span class="n">args</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">});</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//the following prints &quot;called with arguments: foo&quot;</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="s">&quot;foo&quot;</span><span class="o">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当我们一个函数方法返回结果的不确定性，需要动态地根据参数指来改变。则上述的几个 <code>then</code> 方法不满足的情况下，我们可以通过 <code>thenAnswer</code> 方法返回一个 Answer 对象，来动态地返回结果。</p>
+
+<h3>12.doReturn | doThrow | doAnswer | doNothing | doCallRealMethod</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">List</span> <span class="n">mockedList</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">LinkedList</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'><span class="n">doThrow</span><span class="o">(</span><span class="k">new</span> <span class="nf">RuntimeException</span><span class="o">()).</span><span class="na">when</span><span class="o">(</span><span class="n">mockedList</span><span class="o">).</span><span class="na">clear</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//following throws RuntimeException:</span>
+</span><span class='line'><span class="n">mockedList</span><span class="o">.</span><span class="na">clear</span><span class="o">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用 do 系列的方法，我们可以针对 <code>返回值</code> 的方法进行测试。</p>
+
+<h3>13.检测真实的对象</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">List</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">LinkedList</span><span class="o">();</span>
+</span><span class='line'><span class="n">List</span> <span class="n">sypList</span> <span class="o">=</span> <span class="n">spy</span><span class="o">(</span><span class="n">list</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//optionally, you can stub out some methods:</span>
+</span><span class='line'><span class="n">when</span><span class="o">(</span><span class="n">sypList</span><span class="o">.</span><span class="na">size</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="mi">100</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//using the spy calls *real* methods</span>
+</span><span class='line'><span class="n">sypList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;one&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">sypList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;two&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//prints &quot;one&quot; - the first element of a list</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">sypList</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">));</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//size() method was stubbed - 100 is printed</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">sypList</span><span class="o">.</span><span class="na">size</span><span class="o">());</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//optionally, you can verify</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">sypList</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;one&quot;</span><span class="o">);</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">sypList</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="s">&quot;two&quot;</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>mock 方法是根据接口、类动态地生成一个对象，若是我们有一个真正的对象的时候，其就不适用了，这时，可以使用 spy 方法。但是其有使用限制的：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">List</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">LinkedList</span><span class="o">();</span>
+</span><span class='line'><span class="n">List</span> <span class="n">spy</span> <span class="o">=</span> <span class="n">spy</span><span class="o">(</span><span class="n">list</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//Impossible: real method is called so spy.get(0) throws IndexOutOfBoundsException (the list is yet empty)</span>
+</span><span class='line'><span class="c1">//when(spy.get(0)).thenReturn(&quot;foo&quot;);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//You have to use doReturn() for stubbing</span>
+</span><span class='line'><span class="n">doReturn</span><span class="o">(</span><span class="s">&quot;foo&quot;</span><span class="o">).</span><span class="na">when</span><span class="o">(</span><span class="n">spy</span><span class="o">).</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用 <code>when</code> + <code>thenReturn</code> ，并不返回我们预期的结果，而是需要使用 <code>doReturn</code> + <code>when</code> 的格式。
+其原因在于，Mockito 框架并不会对真实的对象进行 mock，只会真实的对象创建一个副本。</p>
+
+<h3>14.指定返回信息</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">Map</span> <span class="n">mock</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">HashMap</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="n">Mockito</span><span class="o">.</span><span class="na">RETURNS_SMART_NULLS</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="s">&quot;b&quot;</span><span class="o">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>添加了 <code>Mockito. RETURNS_SMART_NULLS</code> 参数，当调用未指定返回行为的方法，输出的内容将不再是简单的 <code>null</code> 异常，而是下面更加人性化的信息:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">SmartNull</span> <span class="n">returned</span> <span class="n">by</span> <span class="k">this</span> <span class="n">unstubbed</span> <span class="n">method</span> <span class="n">call</span> <span class="n">on</span> <span class="n">a</span> <span class="nl">mock:</span>
+</span><span class='line'><span class="n">hashMap</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="s">&quot;b&quot;</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>15.参数匹配判断</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nc">ListOfTwoElements</span> <span class="kd">implements</span> <span class="n">ArgumentMatcher</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&gt;</span> <span class="o">{</span>
+</span><span class='line'>   <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">matches</span><span class="o">(</span><span class="n">List</span> <span class="n">list</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="k">return</span> <span class="n">list</span><span class="o">.</span><span class="na">size</span><span class="o">()</span> <span class="o">==</span> <span class="mi">2</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>   <span class="kd">public</span> <span class="n">String</span> <span class="nf">toString</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>       <span class="c1">//printed in verification errors</span>
+</span><span class='line'>       <span class="k">return</span> <span class="s">&quot;[list of 2 elements]&quot;</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">List</span> <span class="n">mock</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">when</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">addAll</span><span class="o">(</span><span class="n">argThat</span><span class="o">(</span><span class="k">new</span> <span class="nf">ListOfTwoElements</span><span class="o">()))).</span><span class="na">thenReturn</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">mock</span><span class="o">.</span><span class="na">addAll</span><span class="o">(</span><span class="n">Arrays</span><span class="o">.</span><span class="na">asList</span><span class="o">(</span><span class="s">&quot;one&quot;</span><span class="o">,</span> <span class="s">&quot;two&quot;</span><span class="o">));</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mock</span><span class="o">).</span><span class="na">addAll</span><span class="o">(</span><span class="n">argThat</span><span class="o">(</span><span class="k">new</span> <span class="nf">ListOfTwoElements</span><span class="o">()));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>实现 <code>ArgumentMatcher</code> 类，并通过 <code>argThat</code> 方法对参数进行判断。</p>
+
+<h3>16.对真实类的部分 mock</h3>
+
+<p>这里一般有两种写法：
+1） 使用 spy</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Test</span>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">testPartialRealMock1</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>  <span class="c1">//you can create partial mock with spy() method:</span>
+</span><span class='line'>  <span class="n">LinkedList</span> <span class="n">linkedList</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">LinkedList</span><span class="o">();</span>
+</span><span class='line'>  <span class="n">linkedList</span><span class="o">.</span><span class="na">addFirst</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">List</span> <span class="n">list</span> <span class="o">=</span> <span class="n">spy</span><span class="o">(</span><span class="n">linkedList</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">assertThat</span><span class="o">(</span><span class="n">list</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">),</span> <span class="n">is</span><span class="o">(</span><span class="mi">1</span><span class="o">));</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过 spy 调用对象的方法，将会调用其真正的方法。</p>
+
+<p>2) 使用 mock</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="nd">@Rule</span>
+</span><span class='line'><span class="kd">public</span> <span class="n">ExpectedException</span> <span class="n">thrown</span><span class="o">=</span> <span class="n">ExpectedException</span><span class="o">.</span><span class="na">none</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@Test</span>
+</span><span class='line'><span class="kd">public</span> <span class="kt">void</span> <span class="nf">testPartialRealMock2</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>  <span class="c1">//you can enable partial mock capabilities selectively on mocks:</span>
+</span><span class='line'>  <span class="n">List</span> <span class="n">mock</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">LinkedList</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'>  <span class="c1">//Be sure the real implementation is &#39;safe&#39;.</span>
+</span><span class='line'>  <span class="c1">//If real implementation throws exceptions or depends on specific state of the object then you&#39;re in trouble.</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">when</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">anyInt</span><span class="o">())).</span><span class="na">thenCallRealMethod</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">thrown</span><span class="o">.</span><span class="na">expect</span><span class="o">(</span><span class="n">Exception</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">mock</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>针对 mock 的使用时，主要代码在于方法 <code>thenCallRealMethod()</code>，但它有个很大的安全隐患，就是此方法抛出异常的问题。上述代码就可以看出，因为真实的 list 对象，并不含有任何元素，所以在通过真实方法返回时，就会有异常产生。</p>
+
+<p>这里，建议使用方法一 <code>spy</code>，来对真实的对象进行测试。</p>
+
+<h3>17.重置 mock</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">List</span> <span class="n">mock</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'><span class="n">when</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">size</span><span class="o">()).</span><span class="na">thenReturn</span><span class="o">(</span><span class="mi">10</span><span class="o">);</span>
+</span><span class='line'><span class="n">mock</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+</span><span class='line'><span class="n">reset</span><span class="o">(</span><span class="n">mock</span><span class="o">);</span>
+</span><span class='line'><span class="n">assertThat</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">size</span><span class="o">(),</span> <span class="n">is</span><span class="o">(</span><span class="mi">0</span><span class="o">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用 <code>reset</code> 方法，可以将 mock 重置为初始状态。</p>
+
+<h3>18.序列化 mock</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'> <span class="n">List</span> <span class="n">serializableMock</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="n">withSettings</span><span class="o">().</span><span class="na">serializable</span><span class="o">());</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>若是 spy 的使用则如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">List</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span> <span class="n">list</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;();</span>
+</span><span class='line'><span class="n">List</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span> <span class="n">spy</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">ArrayList</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="n">withSettings</span><span class="o">()</span> <span class="o">.</span><span class="na">spiedInstance</span><span class="o">(</span><span class="n">list</span><span class="o">)</span> <span class="o">.</span><span class="na">defaultAnswer</span><span class="o">(</span><span class="n">CALLS_REAL_METHODS</span><span class="o">)</span> <span class="o">.</span><span class="na">serializable</span><span class="o">());</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>19.timeout 的使用</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">List</span> <span class="n">mock</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">when</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">)).</span><span class="na">thenReturn</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">));</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mock</span><span class="o">,</span> <span class="n">timeout</span><span class="o">(</span><span class="mi">100</span><span class="o">)).</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span><span class='line'><span class="c1">//above is an alias to:</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mock</span><span class="o">,</span> <span class="n">timeout</span><span class="o">(</span><span class="mi">100</span><span class="o">).</span><span class="na">times</span><span class="o">(</span><span class="mi">1</span><span class="o">)).</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">));</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mock</span><span class="o">,</span> <span class="n">timeout</span><span class="o">(</span><span class="mi">100</span><span class="o">).</span><span class="na">times</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mock</span><span class="o">,</span> <span class="n">timeout</span><span class="o">(</span><span class="mi">100</span><span class="o">).</span><span class="na">atLeast</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mock</span><span class="o">,</span> <span class="k">new</span> <span class="nf">Timeout</span><span class="o">(</span><span class="mi">100</span><span class="o">,</span> <span class="k">new</span> <span class="nf">VerificationMode</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>   <span class="nd">@Override</span>
+</span><span class='line'>   <span class="kd">public</span> <span class="kt">void</span> <span class="nf">verify</span><span class="o">(</span><span class="n">VerificationData</span> <span class="n">data</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="nd">@Override</span>
+</span><span class='line'>   <span class="kd">public</span> <span class="n">VerificationMode</span> <span class="nf">description</span><span class="o">(</span><span class="n">String</span> <span class="n">description</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'><span class="o">})).</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>指定了 <code>timeout</code> 的延时，同时我们也可以其他的验证操作，例如 <code>times</code>，<code>atLeast</code> 等，另外，我们也可以自定义自己的验证规则 <code>VerficationMode</code>。</p>
+
+<h3>20.ignoreStub方法</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="c1">//mocking lists for the sake of the example (if you mock List in real you will burn in hell)</span>
+</span><span class='line'><span class="n">List</span> <span class="n">mock1</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">),</span> <span class="n">mock2</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//stubbing mocks:</span>
+</span><span class='line'><span class="n">when</span><span class="o">(</span><span class="n">mock1</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">)).</span><span class="na">thenReturn</span><span class="o">(</span><span class="mi">10</span><span class="o">);</span>
+</span><span class='line'><span class="n">when</span><span class="o">(</span><span class="n">mock2</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">)).</span><span class="na">thenReturn</span><span class="o">(</span><span class="mi">20</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//using mocks by calling stubbed get(0) methods:</span>
+</span><span class='line'><span class="c1">//System.out.println(mock1.get(0)); //prints 10</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">mock2</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">));</span> <span class="c1">//prints 20</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">mock1</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mock1</span><span class="o">).</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//using mocks by calling clear() methods:</span>
+</span><span class='line'><span class="n">mock1</span><span class="o">.</span><span class="na">clear</span><span class="o">();</span>
+</span><span class='line'><span class="n">mock2</span><span class="o">.</span><span class="na">clear</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//verification:</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mock1</span><span class="o">).</span><span class="na">clear</span><span class="o">();</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">mock2</span><span class="o">).</span><span class="na">clear</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//verifyNoMoreInteractions() fails because get() methods were not accounted for.</span>
+</span><span class='line'><span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">verifyNoMoreInteractions</span><span class="o">(</span><span class="n">mock1</span><span class="o">,</span> <span class="n">mock2</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">NoInteractionsWanted</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">e</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//However, if we ignore stubbed methods then we can verifyNoMoreInteractions()</span>
+</span><span class='line'><span class="n">verifyNoMoreInteractions</span><span class="o">(</span><span class="n">ignoreStubs</span><span class="o">(</span><span class="n">mock1</span><span class="o">,</span> <span class="n">mock2</span><span class="o">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当第一次调用 <code>verifyNoMoreInteractions</code> 时，直接出现异常，是因为之前也调用了 <code>mock2.get(0)</code>，但是并没有进行 <code>verify</code>。
+而一旦我们对添加了 <code>ignoreStubs</code>方法，则会忽略之前的 <code>Stub</code> 的方法，不会再有 <code>verify</code>的限制。
+比较特殊的是 <code>inOrder</code>的方法，它会自带 <code>ignoreStubs</code>的效果：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">List</span> <span class="n">list</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'><span class="n">when</span><span class="o">(</span><span class="n">list</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">)).</span><span class="na">thenReturn</span><span class="o">(</span><span class="s">&quot;foo&quot;</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">list</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span><span class='line'><span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">list</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">));</span> <span class="c1">//we don&#39;t want to verify this</span>
+</span><span class='line'><span class="n">list</span><span class="o">.</span><span class="na">clear</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//verify(list).add(0);</span>
+</span><span class='line'><span class="c1">//verify(list).add(0);</span>
+</span><span class='line'><span class="c1">//verify(list).clear();</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Same as: InOrder inOrder = inOrder(list);</span>
+</span><span class='line'><span class="n">InOrder</span> <span class="n">inOrder</span> <span class="o">=</span> <span class="n">inOrder</span><span class="o">(</span><span class="n">ignoreStubs</span><span class="o">(</span><span class="n">list</span><span class="o">));</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">inOrder</span><span class="o">.</span><span class="na">verify</span><span class="o">(</span><span class="n">list</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span><span class='line'><span class="c1">// this will have an error..</span>
+</span><span class='line'><span class="c1">//inOrder.verify(list).get(0);</span>
+</span><span class='line'><span class="n">inOrder</span><span class="o">.</span><span class="na">verify</span><span class="o">(</span><span class="n">list</span><span class="o">).</span><span class="na">clear</span><span class="o">();</span>
+</span><span class='line'><span class="n">inOrder</span><span class="o">.</span><span class="na">verifyNoMoreInteractions</span><span class="o">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码中特殊的一点是使用了 <code>inOrder</code>，它并不会上面 <code>System.out.println(list.get(0));</code> 做处理。</p>
+
+<h3>21. 获取 mock 详情</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">List</span> <span class="n">list</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'><span class="n">assertThat</span><span class="o">(</span><span class="n">Mockito</span><span class="o">.</span><span class="na">mockingDetails</span><span class="o">(</span><span class="n">list</span><span class="o">).</span><span class="na">isMock</span><span class="o">(),</span> <span class="n">is</span><span class="o">(</span><span class="kc">true</span><span class="o">));</span>
+</span><span class='line'><span class="n">assertThat</span><span class="o">(</span><span class="n">Mockito</span><span class="o">.</span><span class="na">mockingDetails</span><span class="o">(</span><span class="n">list</span><span class="o">).</span><span class="na">isSpy</span><span class="o">(),</span> <span class="n">is</span><span class="o">(</span><span class="kc">false</span><span class="o">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>22.自定义错误信息</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="n">List</span> <span class="n">list</span> <span class="o">=</span> <span class="n">mock</span><span class="o">(</span><span class="n">List</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+</span><span class='line'><span class="n">when</span><span class="o">(</span><span class="n">list</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">)).</span><span class="na">thenReturn</span><span class="o">(</span><span class="mi">1</span><span class="o">);</span>
+</span><span class='line'><span class="n">verify</span><span class="o">(</span><span class="n">list</span><span class="o">,</span> <span class="n">description</span><span class="o">(</span><span class="s">&quot;should print the get(0) result&quot;</span><span class="o">)).</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<blockquote><p>官方文档还提供一些关于 Java8 函数式的更多用法，这里因为环境问题就不列举了，更多内容可查阅官方文档。</p></blockquote>
+
+<h2>原理简单剖析</h2>
+
+<p>通过上面的示例，我们可以发现两个很重要的方法：<code>mock</code> 及 <code>verify</code>。</p>
+
+<h3>1.mock 类生成</h3>
+
+<p>这里是使用运行时生成代码的库 <a href="https://github.com/raphw/byte-buddy">byte-buddy</a>，而对应在 <code>mockito</code> 框架中实现的代码是在 <code>MockBytecodeGenerator</code> 类中。其中主要的代码在方法 <code>generateMockClass</code> 中，</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">Class</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">T</span><span class="o">&gt;</span> <span class="nf">generateMockClass</span><span class="o">(</span><span class="n">MockFeatures</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">features</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">DynamicType</span><span class="o">.</span><span class="na">Builder</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">builder</span> <span class="o">=</span>
+</span><span class='line'>          <span class="n">byteBuddy</span><span class="o">.</span><span class="na">subclass</span><span class="o">(</span><span class="n">features</span><span class="o">.</span><span class="na">mockedType</span><span class="o">)</span>
+</span><span class='line'>                   <span class="o">.</span><span class="na">name</span><span class="o">(</span><span class="n">nameFor</span><span class="o">(</span><span class="n">features</span><span class="o">.</span><span class="na">mockedType</span><span class="o">))</span>
+</span><span class='line'>                   <span class="o">.</span><span class="na">ignoreAlso</span><span class="o">(</span><span class="n">isGroovyMethod</span><span class="o">())</span>
+</span><span class='line'>                   <span class="o">.</span><span class="na">annotateType</span><span class="o">(</span><span class="n">features</span><span class="o">.</span><span class="na">mockedType</span><span class="o">.</span><span class="na">getAnnotations</span><span class="o">())</span>
+</span><span class='line'>                   <span class="o">.</span><span class="na">implement</span><span class="o">(</span><span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Type</span><span class="o">&gt;(</span><span class="n">features</span><span class="o">.</span><span class="na">interfaces</span><span class="o">))</span>
+</span><span class='line'>                   <span class="o">.</span><span class="na">method</span><span class="o">(</span><span class="n">any</span><span class="o">())</span>
+</span><span class='line'>                     <span class="o">.</span><span class="na">intercept</span><span class="o">(</span><span class="n">MethodDelegation</span><span class="o">.</span><span class="na">to</span><span class="o">(</span><span class="n">DispatcherDefaultingToRealMethod</span><span class="o">.</span><span class="na">class</span><span class="o">))</span>
+</span><span class='line'>                     <span class="o">.</span><span class="na">transform</span><span class="o">(</span><span class="n">Transformer</span><span class="o">.</span><span class="na">ForMethod</span><span class="o">.</span><span class="na">withModifiers</span><span class="o">(</span><span class="n">SynchronizationState</span><span class="o">.</span><span class="na">PLAIN</span><span class="o">))</span>
+</span><span class='line'>                     <span class="o">.</span><span class="na">attribute</span><span class="o">(</span><span class="n">MethodAttributeAppender</span><span class="o">.</span><span class="na">ForInstrumentedMethod</span><span class="o">.</span><span class="na">INCLUDING_RECEIVER</span><span class="o">)</span>
+</span><span class='line'>                   <span class="o">.</span><span class="na">serialVersionUid</span><span class="o">(</span><span class="mi">42L</span><span class="o">)</span>
+</span><span class='line'>                   <span class="o">.</span><span class="na">defineField</span><span class="o">(</span><span class="s">&quot;mockitoInterceptor&quot;</span><span class="o">,</span> <span class="n">MockMethodInterceptor</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="n">PRIVATE</span><span class="o">)</span>
+</span><span class='line'>                   <span class="o">.</span><span class="na">implement</span><span class="o">(</span><span class="n">MockAccess</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+</span><span class='line'>                     <span class="o">.</span><span class="na">intercept</span><span class="o">(</span><span class="n">FieldAccessor</span><span class="o">.</span><span class="na">ofBeanProperty</span><span class="o">())</span>
+</span><span class='line'>                   <span class="o">.</span><span class="na">method</span><span class="o">(</span><span class="n">isHashCode</span><span class="o">())</span>
+</span><span class='line'>                     <span class="o">.</span><span class="na">intercept</span><span class="o">(</span><span class="n">to</span><span class="o">(</span><span class="n">MockMethodInterceptor</span><span class="o">.</span><span class="na">ForHashCode</span><span class="o">.</span><span class="na">class</span><span class="o">))</span>
+</span><span class='line'>                   <span class="o">.</span><span class="na">method</span><span class="o">(</span><span class="n">isEquals</span><span class="o">())</span>
+</span><span class='line'>                     <span class="o">.</span><span class="na">intercept</span><span class="o">(</span><span class="n">to</span><span class="o">(</span><span class="n">MockMethodInterceptor</span><span class="o">.</span><span class="na">ForEquals</span><span class="o">.</span><span class="na">class</span><span class="o">));</span>
+</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">features</span><span class="o">.</span><span class="na">crossClassLoaderSerializable</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">builder</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="na">implement</span><span class="o">(</span><span class="n">CrossClassLoaderSerializableMock</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+</span><span class='line'>                       <span class="o">.</span><span class="na">intercept</span><span class="o">(</span><span class="n">to</span><span class="o">(</span><span class="n">MockMethodInterceptor</span><span class="o">.</span><span class="na">ForWriteReplace</span><span class="o">.</span><span class="na">class</span><span class="o">));</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">builder</span><span class="o">.</span><span class="na">make</span><span class="o">()</span>
+</span><span class='line'>                <span class="o">.</span><span class="na">load</span><span class="o">(</span><span class="k">new</span> <span class="n">MultipleParentClassLoader</span><span class="o">.</span><span class="na">Builder</span><span class="o">()</span>
+</span><span class='line'>                        <span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">features</span><span class="o">.</span><span class="na">mockedType</span><span class="o">)</span>
+</span><span class='line'>                        <span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">features</span><span class="o">.</span><span class="na">interfaces</span><span class="o">)</span>
+</span><span class='line'>                        <span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">().</span><span class="na">getContextClassLoader</span><span class="o">())</span>
+</span><span class='line'>                        <span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">MockAccess</span><span class="o">.</span><span class="na">class</span><span class="o">,</span> <span class="n">DispatcherDefaultingToRealMethod</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+</span><span class='line'>                        <span class="o">.</span><span class="na">append</span><span class="o">(</span><span class="n">MockMethodInterceptor</span><span class="o">.</span><span class="na">class</span><span class="o">,</span>
+</span><span class='line'>                                <span class="n">MockMethodInterceptor</span><span class="o">.</span><span class="na">ForHashCode</span><span class="o">.</span><span class="na">class</span><span class="o">,</span>
+</span><span class='line'>                                <span class="n">MockMethodInterceptor</span><span class="o">.</span><span class="na">ForEquals</span><span class="o">.</span><span class="na">class</span><span class="o">).</span><span class="na">build</span><span class="o">(),</span>
+</span><span class='line'>                        <span class="n">ClassLoadingStrategy</span><span class="o">.</span><span class="na">Default</span><span class="o">.</span><span class="na">INJECTION</span><span class="o">.</span><span class="na">with</span><span class="o">(</span><span class="n">features</span><span class="o">.</span><span class="na">mockedType</span><span class="o">.</span><span class="na">getProtectionDomain</span><span class="o">()))</span>
+</span><span class='line'>                <span class="o">.</span><span class="na">getLoaded</span><span class="o">();</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里便是通过 byte-buddy 来生成我们的 mock 类， 其中代码行 <code>.intercept(MethodDelegation.to(DispatcherDefaultingToRealMethod.class))</code> 则是用来生成代理方法的类 ，其中 <code>DispatcherDefaultingToRealMethod</code> 是类 <code>MockMethodInterceptor</code> 的静态内部类。在对其调用时，最后会调到 <code>MockHandlerImpl</code> 类的实现方法 <code>handle</code> ，这个才是我们执行 mock 类方法每次调用的重头戏：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="n">Object</span> <span class="nf">handle</span><span class="o">(</span><span class="n">Invocation</span> <span class="n">invocation</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Throwable</span> <span class="o">{</span>
+</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">invocationContainerImpl</span><span class="o">.</span><span class="na">hasAnswersForStubbing</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>      <span class="c1">// 对 doThrow() 或者 doAnswer() 返回 void 格式的执行调用     </span>
+</span><span class='line'>      <span class="n">InvocationMatcher</span> <span class="n">invocationMatcher</span> <span class="o">=</span> <span class="n">matchersBinder</span><span class="o">.</span><span class="na">bindMatchers</span><span class="o">(</span>
+</span><span class='line'>              <span class="n">mockingProgress</span><span class="o">().</span><span class="na">getArgumentMatcherStorage</span><span class="o">(),</span>
+</span><span class='line'>              <span class="n">invocation</span>
+</span><span class='line'>      <span class="o">);</span>
+</span><span class='line'>      <span class="n">invocationContainerImpl</span><span class="o">.</span><span class="na">setMethodForStubbing</span><span class="o">(</span><span class="n">invocationMatcher</span><span class="o">);</span>
+</span><span class='line'>      <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="c1">// 验证规则获取</span>
+</span><span class='line'>  <span class="n">VerificationMode</span> <span class="n">verificationMode</span> <span class="o">=</span> <span class="n">mockingProgress</span><span class="o">().</span><span class="na">pullVerificationMode</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">InvocationMatcher</span> <span class="n">invocationMatcher</span> <span class="o">=</span> <span class="n">matchersBinder</span><span class="o">.</span><span class="na">bindMatchers</span><span class="o">(</span>
+</span><span class='line'>          <span class="n">mockingProgress</span><span class="o">().</span><span class="na">getArgumentMatcherStorage</span><span class="o">(),</span>
+</span><span class='line'>          <span class="n">invocation</span>
+</span><span class='line'>  <span class="o">);</span>
+</span><span class='line'><span class="c1">// mock 进度状态的验证</span>
+</span><span class='line'>  <span class="n">mockingProgress</span><span class="o">().</span><span class="na">validateState</span><span class="o">();</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 当 verificationMode 不是空的时候，则表明在执行 verify 方法</span>
+</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">verificationMode</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="c1">// 检查 verificationMode 是否对应正确的 mock</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(((</span><span class="n">MockAwareVerificationMode</span><span class="o">)</span> <span class="n">verificationMode</span><span class="o">).</span><span class="na">getMock</span><span class="o">()</span> <span class="o">==</span> <span class="n">invocation</span><span class="o">.</span><span class="na">getMock</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>          <span class="n">VerificationDataImpl</span> <span class="n">data</span> <span class="o">=</span> <span class="n">createVerificationData</span><span class="o">(</span><span class="n">invocationContainerImpl</span><span class="o">,</span> <span class="n">invocationMatcher</span><span class="o">);</span>
+</span><span class='line'>          <span class="n">verificationMode</span><span class="o">.</span><span class="na">verify</span><span class="o">(</span><span class="n">data</span><span class="o">);</span>
+</span><span class='line'>          <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>          <span class="c1">// 对应的不是相同的 mock , 重新添加 verification mode</span>
+</span><span class='line'>          <span class="n">mockingProgress</span><span class="o">().</span><span class="na">verificationStarted</span><span class="o">(</span><span class="n">verificationMode</span><span class="o">);</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 对调用执行打桩</span>
+</span><span class='line'>  <span class="n">invocationContainerImpl</span><span class="o">.</span><span class="na">setInvocationForPotentialStubbing</span><span class="o">(</span><span class="n">invocationMatcher</span><span class="o">);</span>
+</span><span class='line'>  <span class="n">OngoingStubbingImpl</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">ongoingStubbing</span> <span class="o">=</span> <span class="k">new</span> <span class="n">OngoingStubbingImpl</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;(</span><span class="n">invocationContainerImpl</span><span class="o">);</span>
+</span><span class='line'>  <span class="n">mockingProgress</span><span class="o">().</span><span class="na">reportOngoingStubbing</span><span class="o">(</span><span class="n">ongoingStubbing</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// 对这次调用，查找是否有存在的 answer </span>
+</span><span class='line'>  <span class="n">StubbedInvocationMatcher</span> <span class="n">stubbedInvocation</span> <span class="o">=</span> <span class="n">invocationContainerImpl</span><span class="o">.</span><span class="na">findAnswerFor</span><span class="o">(</span><span class="n">invocation</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">stubbedInvocation</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">stubbedInvocation</span><span class="o">.</span><span class="na">captureArgumentsFrom</span><span class="o">(</span><span class="n">invocation</span><span class="o">);</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">stubbedInvocation</span><span class="o">.</span><span class="na">answer</span><span class="o">(</span><span class="n">invocation</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">Object</span> <span class="n">ret</span> <span class="o">=</span> <span class="n">mockSettings</span><span class="o">.</span><span class="na">getDefaultAnswer</span><span class="o">().</span><span class="na">answer</span><span class="o">(</span><span class="n">invocation</span><span class="o">);</span>
+</span><span class='line'>      <span class="k">new</span> <span class="nf">AnswersValidator</span><span class="o">().</span><span class="na">validateDefaultAnswerReturnedValue</span><span class="o">(</span><span class="n">invocation</span><span class="o">,</span> <span class="n">ret</span><span class="o">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">// 重新设置调用的方法</span>
+</span><span class='line'>      <span class="n">invocationContainerImpl</span><span class="o">.</span><span class="na">resetInvocationForPotentialStubbing</span><span class="o">(</span><span class="n">invocationMatcher</span><span class="o">);</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">ret</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>代码中可以看出这个代理方法也做验证及调用方法的记录，用来方便后续 verify 方法的验证。
+另外，针对真实对象模拟的方法 <code>spy</code> ，其调用的也是 <code>mock</code> 方法，不同的是指定了 <code>spiedInstance</code> 或者 answer 指定的是 <code>CALLS_REAL_METHODS</code>。</p>
+
+<h3>2. verify 方法的实现</h3>
+
+<p>可知 verify 是对 mock 对象的验证，其调用的方法：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">T</span> <span class="nf">verify</span><span class="o">(</span><span class="n">T</span> <span class="n">mock</span><span class="o">,</span> <span class="n">VerificationMode</span> <span class="n">mode</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="k">if</span> <span class="o">(</span><span class="n">mock</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">throw</span> <span class="nf">nullPassedToVerify</span><span class="o">();</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>  <span class="k">if</span> <span class="o">(!</span><span class="n">isMock</span><span class="o">(</span><span class="n">mock</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>      <span class="k">throw</span> <span class="nf">notAMockPassedToVerify</span><span class="o">(</span><span class="n">mock</span><span class="o">.</span><span class="na">getClass</span><span class="o">());</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>  <span class="n">MockingProgress</span> <span class="n">mockingProgress</span> <span class="o">=</span> <span class="n">mockingProgress</span><span class="o">();</span>
+</span><span class='line'>  <span class="n">VerificationMode</span> <span class="n">actualMode</span> <span class="o">=</span> <span class="n">mockingProgress</span><span class="o">.</span><span class="na">maybeVerifyLazily</span><span class="o">(</span><span class="n">mode</span><span class="o">);</span>
+</span><span class='line'>  <span class="n">mockingProgress</span><span class="o">.</span><span class="na">verificationStarted</span><span class="o">(</span><span class="k">new</span> <span class="nf">MockAwareVerificationMode</span><span class="o">(</span><span class="n">mock</span><span class="o">,</span> <span class="n">actualMode</span><span class="o">));</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">mock</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>通过获取到 mockingProgress，调用其方法 <code>verificationStarted</code>，将新的规则 <code>actualMode</code> 保存下来，并最后返回 mock 对象。之后，若是针对 verify 的对象调用方法，则会调到上文提到 <code>MockHandlerImpl</code> 的 <code>handle</code> 方法，会执行下面的语句：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="k">if</span> <span class="o">(((</span><span class="n">MockAwareVerificationMode</span><span class="o">)</span> <span class="n">verificationMode</span><span class="o">).</span><span class="na">getMock</span><span class="o">()</span> <span class="o">==</span> <span class="n">invocation</span><span class="o">.</span><span class="na">getMock</span><span class="o">())</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">VerificationDataImpl</span> <span class="n">data</span> <span class="o">=</span> <span class="n">createVerificationData</span><span class="o">(</span><span class="n">invocationContainerImpl</span><span class="o">,</span> <span class="n">invocationMatcher</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">verificationMode</span><span class="o">.</span><span class="na">verify</span><span class="o">(</span><span class="n">data</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里的 <code>VerificationDataImpl</code> 则有两个属性:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">final</span> <span class="n">InvocationMatcher</span> <span class="n">wanted</span><span class="o">;</span>
+</span><span class='line'><span class="kd">private</span> <span class="kd">final</span> <span class="n">InvocationContainer</span> <span class="n">invocations</span><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其中 <code>invocations</code> 保存着我们对 mock 对象的调用记录，而 <code>wanted</code> 则是我们需要 <code>verify</code> 的方法。而具体的验证规则也就是我们之前保存的 <code>VerificationMode</code>。</p>
+
+<h2>总结</h2>
+
+<p>至此，我们总结了 <code>Mockito</code> 框架的多种使用方法，及其简单的原理实现。若是有小伙伴不甚明了，欢迎加入 qq 群：289926871 来一起讨论。</p>
+
+<h2>参考资料</h2>
+
+<ul>
+<li><a href="http://site.mockito.org/mockito/docs/current/org/mockito/Mockito.html">Mockito doc</a></li>
+<li><a href="https://github.com/mockito/mockito">mockito</a></li>
+<li><a href="https://github.com/raphw/byte-buddy">byte-buddy</a></li>
+</ul>
+
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2016/09/08/unit-test-mockito/">/blog/2016/09/08/unit-test-mockito/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2016-09-08T13:17:00+08:00'><span class='date'>2016-09-08</span> <span class='time'>1:17 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2016/09/08/unit-test-mockito/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2016/09/08/unit-test-mockito/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/09/08/unit-test-junit/" title="Previous Post: 单元测试-Junit 使用及其原理分析">&laquo; 单元测试-Junit 使用及其原理分析</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/09/08/unit-test-robolectric/" title="Next Post: Android单元测试-Robolectric 浅析">Android单元测试-Robolectric 浅析 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2016/09/08/unit-test-mockito/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2016/09/08/unit-test-mockito/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

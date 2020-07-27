@@ -1,0 +1,576 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>HashMap 实现细节点整理 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="HashMap 实现细节点整理 2016-08-26 8:19 pm | Comments 提及 HashMap，大家都耳熟能详了，本文不会再讲它的实现原理，只对其中的一些小的实现细节进行罗列。 首先先要明白的两点： 图中的 table 是一个大小为 2n的一维数组，其中存放的是一个个的 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2016/08/26/hashmap-knowledge-elements/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">HashMap 实现细节点整理</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-08-26T20:19:00+08:00'><span class='date'>2016-08-26</span> <span class='time'>8:19 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>提及 HashMap，大家都耳熟能详了，本文不会再讲它的实现原理，只对其中的一些小的实现细节进行罗列。</p>
+
+<p><img src="http://alighters.github.io/imgs/hashmap.png" alt="hashmap" /></p>
+
+<!-- more -->
+
+
+<p>首先先要明白的两点：</p>
+
+<ul>
+<li><p>图中的 table 是一个大小为 2<sup>n</sup>的一维数组，其中存放的是一个个的 HashMapEntry，而 HashMapEntry 是包含了 hash、key 与 value 值及一个指向 HashMapEntry 的 next 指针。</p></li>
+<li><p>HashMapEntry 在 object 数组中的获取及存放是根据 HashMapEntry 结构的中的 hash 与当前的 table 数组大小一减去已进行与操作的结果来作为相应的索引值（ index = (table.length -1 ) &amp; hash）。若在存放的过程中，index 值相同，则会链接当前 entry 的 next 指针上。</p></li>
+</ul>
+
+
+<h2>只允许放置一个 key 为 null 的元素</h2>
+
+<p>知道 HashMap 中允许存放 key 为 null 的元素，纠其原理是因为其中有一个 <code>entryForNullKey</code> 的属性，专门来存放 null 相应的 value 值，再进行 <code>put</code> 和 <code>remove</code>方法的时候，都会对 key 进行判断，若为 null，则会只进行 <code>entryForNullKey</code>相应的更新操作。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * The entry representing the null key, or null if there&#39;s no such mapping.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kd">transient</span> <span class="n">HashMapEntry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">entryForNullKey</span><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>容量获取算法 roundUpToPowerOfTwo</h2>
+
+<p>我们在初始化 HashMap 的时候，可以通过 <code>new HashMap(int capacity)</code>来构造新的 HashMap，而这个参数的值是可以任意填写的，没做任何规范及限制的。（PS：最好根据要存放元素的数量来填写）
+但是在 HashMap 的实现当中，而是以大于等于 <code>capacity</code> 并且是 2 的幂数的整数来作为一个新的容量值。修正的算法是通过调用 <code>Collections</code> 类中的 <code>roundUpToPowerOfTwo</code> 方法：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm">* Returns the smallest power of two &gt;= its argument, with several caveats:</span>
+</span><span class='line'><span class="cm">* If the argument is negative but not Integer.MIN_VALUE, the method returns</span>
+</span><span class='line'><span class="cm">* zero. If the argument is &gt; 2^30 or equal to Integer.MIN_VALUE, the method</span>
+</span><span class='line'><span class="cm">* returns Integer.MIN_VALUE. If the argument is zero, the method returns</span>
+</span><span class='line'><span class="cm">* zero.</span>
+</span><span class='line'><span class="cm">* @hide</span>
+</span><span class='line'><span class="cm">*/</span>
+</span><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">int</span> <span class="nf">roundUpToPowerOfTwo</span><span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="n">i</span><span class="o">--;</span> <span class="c1">// If input is a power of two, shift its high-order bit right.</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">// &quot;Smear&quot; the high-order bit all the way to the right.</span>
+</span><span class='line'>  <span class="n">i</span> <span class="o">|=</span> <span class="n">i</span> <span class="o">&gt;&gt;&gt;</span>  <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>  <span class="n">i</span> <span class="o">|=</span> <span class="n">i</span> <span class="o">&gt;&gt;&gt;</span>  <span class="mi">2</span><span class="o">;</span>
+</span><span class='line'>  <span class="n">i</span> <span class="o">|=</span> <span class="n">i</span> <span class="o">&gt;&gt;&gt;</span>  <span class="mi">4</span><span class="o">;</span>
+</span><span class='line'>  <span class="n">i</span> <span class="o">|=</span> <span class="n">i</span> <span class="o">&gt;&gt;&gt;</span>  <span class="mi">8</span><span class="o">;</span>
+</span><span class='line'>  <span class="n">i</span> <span class="o">|=</span> <span class="n">i</span> <span class="o">&gt;&gt;&gt;</span> <span class="mi">16</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>可以看到这个算法进行了 5 次移位操作，乍一看，一脸懵逼，这是在干嘛？</p>
+
+<p>细细一想啊，我现在要获取一个是 2 的幂数的整数，那其二进制的表现形式就是其最高位为1 ，低位全部为 0；或者其低位全部为 1，只需再对其加 1，即可变成 2 的倍数。</p>
+
+<p>举个栗子：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mi">1000</span> <span class="mi">0000</span>
+</span><span class='line'><span class="mi">0100</span> <span class="mi">0000</span>  <span class="c1">// 无符号右移一位</span>
+</span><span class='line'><span class="mi">1100</span> <span class="mi">0000</span>  <span class="c1">// 上面两个执行或操作的结果</span>
+</span><span class='line'>
+</span><span class='line'><span class="mi">1100</span> <span class="mi">0000</span>
+</span><span class='line'><span class="mi">0011</span> <span class="mi">0000</span> <span class="c1">// 无符号右移二位</span>
+</span><span class='line'><span class="mi">1111</span> <span class="mi">0000</span> <span class="c1">// 上面两个执行或操作的结果</span>
+</span><span class='line'>
+</span><span class='line'><span class="mi">1111</span> <span class="mi">0000</span>
+</span><span class='line'><span class="mi">0000</span> <span class="mi">1111</span> <span class="c1">// 无符号右移三位</span>
+</span><span class='line'><span class="mi">1111</span> <span class="mi">1111</span> <span class="c1">// 上面两个执行或操作的结果</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>其实我们只需将我们的关注点放置其元素为1的最高位上，执行右移操作，紧接着是或操作，最后的结果就是将高位的1，向后涂抹 （smear），全部变为1。</p>
+
+<p>移位5次的原因在于 Java 中的整数是32位的，正好是2的 5次方。</p>
+
+<p>算法刚开始的减一操作，则是为了防止刚开始传入的数字便是 2 的幂数。用来保证最终的结果是大于等于传入的参数的值。</p>
+
+<h2>扩容的临界值</h2>
+
+<p>HashMap 能够放置元素的最小容量为 4，最大容量为 1 &lt;&lt; 30，并且每次扩容之后的容量大小都是 2 的幂数。
+什么会扩容呢？在每次调用 HashMap 的 put 方法时，在进行 <code>size++</code> 时，会与 <code>threshold</code> 进行比较，当超过 <code>threshold</code>时，就会自动扩容。而这个 <code>threshold</code> 的取值为容量的 &frac34; ，其值的更新之时，是在一维数组 table 根据乘以2的容量，申请空间之时，即 <code>makeTable</code> 方法：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm">* Allocate a table of the given capacity and set the threshold accordingly.</span>
+</span><span class='line'><span class="cm">* @param newCapacity must be a power of two</span>
+</span><span class='line'><span class="cm">*/</span>
+</span><span class='line'><span class="kd">private</span> <span class="n">HashMapEntry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;[]</span> <span class="nf">makeTable</span><span class="o">(</span><span class="kt">int</span> <span class="n">newCapacity</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="nd">@SuppressWarnings</span><span class="o">(</span><span class="s">&quot;unchecked&quot;</span><span class="o">)</span> <span class="n">HashMapEntry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;[]</span> <span class="n">newTable</span>
+</span><span class='line'>          <span class="o">=</span> <span class="o">(</span><span class="n">HashMapEntry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;[])</span> <span class="k">new</span> <span class="n">HashMapEntry</span><span class="o">[</span><span class="n">newCapacity</span><span class="o">];</span>
+</span><span class='line'>  <span class="n">table</span> <span class="o">=</span> <span class="n">newTable</span><span class="o">;</span>
+</span><span class='line'>  <span class="n">threshold</span> <span class="o">=</span> <span class="o">(</span><span class="n">newCapacity</span> <span class="o">&gt;&gt;</span> <span class="mi">1</span><span class="o">)</span> <span class="o">+</span> <span class="o">(</span><span class="n">newCapacity</span> <span class="o">&gt;&gt;</span> <span class="mi">2</span><span class="o">);</span> <span class="c1">// 3/4 capacity</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">newTable</span><span class="o">;</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这里主要研究一下这个获取容量为 &frac34; 的算法，将 <code>newCapacity</code> 右移1位，即获取的是 1/2；右移2位，即获取 1/4；另外再加上 <code>newCapacity</code> 为2的倍数，所以这里的 &frac34; 毫无破绽。</p>
+
+<h2>扩容 * 2实现中的元素转移</h2>
+
+<p>假如我当前 HashMap 中的容量（capacity）为8，在执行元素的获取及存放是，都是先拿元素的 hash 值，跟 capacity - 1 即 7，对应的二进制为 111，执行与操作，获取的结果即为对应所存放数组中的索引。</p>
+
+<p>而当 HashMap 在进行扩容 * 2 之后，元素的获取也要满足上面的方法，那在扩容的时候，就要先前数组到新数组的赋值，那它这个重新索引的算法是怎么进行的呢？</p>
+
+<p>在执行 <code>doubleCapacity</code>方法时候，会进行这个操作：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">oldCapacity</span><span class="o">;</span> <span class="n">j</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>   <span class="c1">// 获取不为空的元素</span>
+</span><span class='line'>   <span class="n">HashMapEntry</span><span class="o">&lt;</span><span class="n">K</span><span class="o">,</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">e</span> <span class="o">=</span> <span class="n">oldTable</span><span class="o">[</span><span class="n">j</span><span class="o">];</span>
+</span><span class='line'>   <span class="k">if</span> <span class="o">(</span><span class="n">e</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>       <span class="k">continue</span><span class="o">;</span>
+</span><span class='line'>   <span class="o">}</span>
+</span><span class='line'>   <span class="kt">int</span> <span class="n">highBit</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="na">hash</span> <span class="o">&amp;</span> <span class="n">oldCapacity</span><span class="o">;</span>
+</span><span class='line'>   <span class="n">newTable</span><span class="o">[</span><span class="n">j</span> <span class="o">|</span> <span class="n">highBit</span><span class="o">]</span> <span class="o">=</span> <span class="n">e</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="cm">/**省略 **/</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>因 <code>oldCapacity</code> 为2的幂数，获取到的 <code>highBit</code> 也是 2 的幂数。若是 e.hash 对应在 oldCapacity 的高位也是相同的 1，则 <code>newTable</code>的索引 <code>j | highBit</code>则是相当于 j 加上了 2 的幂数，即 <code>j | highBit</code> 相对于 newCapacity 来说，从前半段移动到后半段；若是 e.hash 对应在 oldCapacity 的高位不为1，则获取到 <code>highBit</code> 为零，则相应旧数组迁移至新数组的索引位置还是维持原样。</p>
+
+<p>简化上面的公式：</p>
+
+<blockquote><p>公式一： oldIndex = ( 2<sup>n</sup> -1) | hash                <br/>
+公式二:   hash &amp; 2<sup>n</sup> | oldIndex = newIndex</p></blockquote>
+
+<p>可知新的 <code>newIndex</code> 同时也满足：</p>
+
+<blockquote><p>公式三： newIndex  = (2<sup>n+1</sup>  - 1) | hash</p></blockquote>
+
+<p>若是我们将公式一和公式三都代入公式二中，消除 oldIndex 和 newIndex 可得到：</p>
+
+<blockquote><p>公式四： hash &amp; (2<sup>n</sup> -1) | (hash &amp; 2<sup>n</sup>) = hash &amp; ( 2<sup>n+1</sup> - 1)</p></blockquote>
+
+<p>这里发现这个公式，很是符合结合律，即：</p>
+
+<blockquote><p>( a &amp; x ) | ( a &amp; y ) = a &amp; ( x | y )</p></blockquote>
+
+<p>不要问我怎么证明这个公式是对的。（我是问了个妹子，妹子直接告诉不要纠结公式，直接读字面量，即与或操作，就可发现这个公式是正确的。）</p>
+
+<p>这样的话，将上面的公式执行结合律的话，可得公式四的左边：</p>
+
+<blockquote><p>hash &amp; ((2<sup>n</sup> -1) | 2<sup>n</sup> ) = hash &amp; ( 2<sup>n+1</sup> - 1)</p></blockquote>
+
+<p>确定是跟公式四的右半部分相等。至此，可证明这个扩容移位的操作是毫无破绽的，不过一时半会理解起来还是颇为费劲的，也不得不感叹作者的强大。</p>
+
+<h2>Hash 值的生成</h2>
+
+<p>在进行元素的存放及获取时，都会获取元素的 hash 值，（即是 key 的 hash值），而一个好的 HashMap，应该是元素均匀地放置在数组中，而不应该大量地出现簇拥现象，（即对应的 HashMapEntry 的 next 指针不为空）。所以仅仅依靠原始的 key 的 hash 值，则是不靠谱的。所以 HashMap 的算法都会进行二次 hash，但我发现 java 中的版本 跟 android 版本实现完全不一致：</p>
+
+<ul>
+<li>Android的实现（以 Android API 23 为例）
+这里真正的实现是在 <code>Collections</code> 类中：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">private</span> <span class="kd">static</span> <span class="kt">int</span> <span class="nf">secondaryHash</span><span class="o">(</span><span class="kt">int</span> <span class="n">h</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="c1">// Spread bits to regularize both segment and index locations,</span>
+</span><span class='line'>  <span class="c1">// using variant of single-word Wang/Jenkins hash.</span>
+</span><span class='line'>  <span class="n">h</span> <span class="o">+=</span> <span class="o">(</span><span class="n">h</span> <span class="o">&lt;&lt;</span>  <span class="mi">15</span><span class="o">)</span> <span class="o">^</span> <span class="mh">0xffffcd7d</span><span class="o">;</span>
+</span><span class='line'>  <span class="n">h</span> <span class="o">^=</span> <span class="o">(</span><span class="n">h</span> <span class="o">&gt;&gt;&gt;</span> <span class="mi">10</span><span class="o">);</span>
+</span><span class='line'>  <span class="n">h</span> <span class="o">+=</span> <span class="o">(</span><span class="n">h</span> <span class="o">&lt;&lt;</span>   <span class="mi">3</span><span class="o">);</span>
+</span><span class='line'>  <span class="n">h</span> <span class="o">^=</span> <span class="o">(</span><span class="n">h</span> <span class="o">&gt;&gt;&gt;</span>  <span class="mi">6</span><span class="o">);</span>
+</span><span class='line'>  <span class="n">h</span> <span class="o">+=</span> <span class="o">(</span><span class="n">h</span> <span class="o">&lt;&lt;</span>   <span class="mi">2</span><span class="o">)</span> <span class="o">+</span> <span class="o">(</span><span class="n">h</span> <span class="o">&lt;&lt;</span> <span class="mi">14</span><span class="o">);</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">h</span> <span class="o">^</span> <span class="o">(</span><span class="n">h</span> <span class="o">&gt;&gt;&gt;</span> <span class="mi">16</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这个算法看的是一脸懵逼，若是有哪位大神看懂了，希望能够指点一下小弟。这里可去参看注释中提到的 Wang/Jenkins hash，这里是借鉴这位大神的实现。算法最终达到的效果就是一个网友提到的“崩坏性”，即微小的改动，也会触发结果的大变样。</p>
+
+<ul>
+<li>Java的实现 （以 JDK 1.8 为例）</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="nf">hash</span><span class="o">(</span><span class="n">Object</span> <span class="n">key</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">h</span><span class="o">;</span>
+</span><span class='line'>  <span class="k">return</span> <span class="o">(</span><span class="n">key</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">?</span> <span class="mi">0</span> <span class="o">:</span> <span class="o">(</span><span class="n">h</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="na">hashCode</span><span class="o">())</span> <span class="o">^</span> <span class="o">(</span><span class="n">h</span> <span class="o">&gt;&gt;&gt;</span> <span class="mi">16</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>明显地看出它这里处理就相当简单了，只将高位进行后移16位，然后进行异或就结束了。不过官方文档给出的说法是，因为其 table 大小是 2<sup>n</sup> ，其实发生碰撞的概率很小，另外在 1.8 中碰撞的链表已经修改为了树结构，所以这里是针对速度、实用及位扩展操作复杂度的一个权衡。</p>
+
+<h2>线程同步</h2>
+
+<p>另外需要谨记的是，HashMap 不是线程安全的，若出现多线程访问的问题，需要实用 <code>Collections.synchronizedMap(Map&lt;K, V&gt; map)</code> 方法来对 map 再进行一次包装。不过其返回的数据结构  <code>SynchronizedMap</code> 也是很简单的，采用组合的方式持有 map，然后针对 map 的每个操作，都加上了同步块。</p>
+
+<p>至此，HashMap 应该了然于胸了，若是小伙伴还有什么疑问的话，欢迎一起交流。</p>
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2016/08/26/hashmap-knowledge-elements/">/blog/2016/08/26/hashmap-knowledge-elements/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2016-08-26T20:19:00+08:00'><span class='date'>2016-08-26</span> <span class='time'>8:19 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2016/08/26/hashmap-knowledge-elements/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2016/08/26/hashmap-knowledge-elements/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/" title="Previous Post: RxJava+Retrofit实现全局过期token自动刷新Demo篇">&laquo; RxJava+Retrofit实现全局过期token自动刷新Demo篇</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/09/08/unit-test-junit/" title="Next Post: 单元测试-Junit 使用及其原理分析">单元测试-Junit 使用及其原理分析 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2016/08/26/hashmap-knowledge-elements/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2016/08/26/hashmap-knowledge-elements/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

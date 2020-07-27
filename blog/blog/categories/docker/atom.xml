@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Docker | alighters]]></title>
+  <link href="http://alighters.github.io/blog/blog/categories/docker/atom.xml" rel="self"/>
+  <link href="http://alighters.github.io/blog/"/>
+  <updated>2020-07-28T00:22:56+08:00</updated>
+  <id>http://alighters.github.io/blog/</id>
+  <author>
+    <name><![CDATA[alighters]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Docker Config Ssr]]></title>
+    <link href="http://alighters.github.io/blog/blog/2019/03/22/docker-config-ssr/"/>
+    <updated>2019-03-22T14:24:00+08:00</updated>
+    <id>http://alighters.github.io/blog/blog/2019/03/22/docker-config-ssr</id>
+    <content type="html"><![CDATA[<h2>安装 Docker</h2>
+
+<p>具体针对自己的服务器，参照 <a href="https://docs.docker.com/install/overview/">Overview of Docker editions | Docker Documentation</a> 选择对应的版本进行安装</p>
+
+<!-- more -->
+
+
+<h2>创建用户组</h2>
+
+<p>因为在 Docker 执行的用户，是非 root 的用户，所以这里需要创建一个 docker 的用户组。</p>
+
+<pre><code>sudo usermod -aG docker $user
+</code></pre>
+
+<blockquote><p>需要退出登录，重新进入才会生效。</p></blockquote>
+
+<h2>编写镜像</h2>
+
+<p>创建一个目录，在目录下创建一个 <code>Dockerfile</code> 的文件</p>
+
+<pre><code># Dockerfile for ShadowsocksR
+# Copyright (C) 2018 - 2019 Teddysun &lt;i@teddysun.com&gt;
+# Reference URL:
+# https://github.com/shadowsocksrr/shadowsocksr
+
+FROM debian:stretch
+LABEL maintainer="david"
+
+RUN set -ex \
+        &amp;&amp; apt-get update \
+        &amp;&amp; apt-get install -y wget python libsodium-dev openssl \
+        &amp;&amp; rm -rf /var/lib/apt/lists/* \
+        &amp;&amp; wget -O /tmp/shadowsocksr-3.2.2.tar.gz https://github.com/shadowsocksrr/shadowsocksr/archive/3.2.2.tar.gz \
+        &amp;&amp; tar zxf /tmp/shadowsocksr-3.2.2.tar.gz -C /tmp \
+        &amp;&amp; mv /tmp/shadowsocksr-3.2.2/shadowsocks /usr/local/ \
+        &amp;&amp; rm -fr /tmp/shadowsocksr-3.2.2 \
+        &amp;&amp; rm -f /tmp/shadowsocksr-3.2.2.tar.gz
+
+COPY ./config_ssr.json /etc/shadowsocks-r/config.json
+VOLUME /etc/shadowsocks-r
+
+CMD ["/usr/local/shadowsocks/server.py", "-c", "/etc/shadowsocks-r/config.json" ]
+</code></pre>
+
+<p>此目录下需要一个 config_ssr.json 的文件，用来配置 ssr 的参数：</p>
+
+<pre><code>{
+    "server":"0.0.0.0",
+    "server_ipv6":"[::]",
+    "server_port":xxxxxx,
+    "local_address":"127.0.0.1",
+    "local_port":1080,
+    "password":"xxxxxx",
+    "timeout":120,
+    "method":"rc4-md5",
+    "protocol":"origin",
+    "protocol_param":"",
+    "obfs":"plain",
+    "obfs_param":"",
+    "redirect":"",
+    "dns_ipv6":false,
+    "fast_open":false,
+    "workers":1
+}
+</code></pre>
+
+<p>这里的参数可参照，<a href="https://github.com/shadowsocksrr/shadowsocksr">https://github.com/shadowsocksrr/shadowsocksr</a> 进行设置。注意 server_port 与 password 的设置。</p>
+
+<h2>创建镜像</h2>
+
+<p>在当前目录下，执行如下命令
+<code>
+docker build -t shadowsocks:v1 .
+</code>
+shadowsocks 为创建的服务名称，v1 表示的是版本，<code>.</code>指的是以当前的目录，为执行的上下文。</p>
+
+<h2>创建容器</h2>
+
+<p>可使用 <code>docker image ls</code> 来查看当前 docker 中的镜像。
+<code>
+docker run -d -p 12345:12345 shadowsocks:v1
+</code>
+-d 指定在后台创建, -p 指定的是端口的映射。这里是说将创建出来的 shadowsocks:v1 容器的端口 12345 映射至服务器的端口。</p>
+
+<p>这样，便完成了 SSR 的服务创建，可自行测试服务是否正常工作了。</p>
+]]></content>
+  </entry>
+  
+</feed>

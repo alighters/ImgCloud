@@ -1,0 +1,621 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>一键收藏至Github - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="一键收藏至Github 2016-02-29 10:33 pm | Comments 因本人比较喜欢对一些技术文章进行收藏，并进行整理。像Pocket、Evernote这些工具都可以进行离线收藏，都是很不错的工具，但我就想把这些喜欢的文章，进行收藏整理至github，并且一键提交（ &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2016/02/29/one-click-collecto-to-github/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">一键收藏至Github</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-02-29T22:33:04+00:00'><span class='date'>2016-02-29</span> <span class='time'>10:33 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>因本人比较喜欢对一些技术文章进行收藏，并进行整理。像Pocket、Evernote这些工具都可以进行离线收藏，都是很不错的工具，但我就想把这些喜欢的文章，进行收藏整理至github，并且一键提交（顺便还可以刷刷Github的活跃度），同时省了自己的时间，只需要在固定的时间，对这些进行整理即可。</p>
+
+<!-- more -->
+
+
+<h3>简单需求</h3>
+
+<p>  首先，简单得说一下自己的需求，根据每天的阅读文章通过每天归类显示，并按照每月来生成文章，具体的文章输出结果显示如<a href="http://www.jianshu.com/p/7f5295eed909">2016.01阅读文章</a>。</p>
+
+<h3>技术搭建</h3>
+
+<p>  这里主要的技术主要两个难点：</p>
+
+<ul>
+<li><p>一键点击插件的生成</p></li>
+<li><p>脚本编写生成对应的markdown</p></li>
+</ul>
+
+
+<h3>技术实现</h3>
+
+<ol>
+<li>JS来获取当前文章的标题以及链接
+这里参照百度首页链接的添加，通过JS先获取到document以及location对象，然后通过它俩来拿到当前窗口的链接以及标题，然后调用本地服务的一个请求，传递给本地服务，来进行当前网址的记录。主要的代码如下：</li>
+</ol>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">javascript</span><span class="o">:</span> <span class="p">((</span><span class="kd">function</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="nx">d</span><span class="p">,</span> <span class="nx">e</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">u</span> <span class="o">=</span> <span class="nx">location</span><span class="p">;</span>
+</span><span class='line'>    <span class="kd">var</span> <span class="nx">f</span> <span class="o">=</span> <span class="s1">&#39;http://localhost:3000/create?link=&#39;</span> <span class="o">+</span> <span class="nx">e</span><span class="p">(</span><span class="nx">u</span><span class="p">.</span><span class="nx">href</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;&amp;title=&#39;</span> <span class="o">+</span> <span class="nx">e</span><span class="p">(</span><span class="nx">d</span><span class="p">.</span><span class="nx">title</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;&amp;_t=&#39;</span> <span class="o">+</span> <span class="k">new</span> <span class="nb">Date</span><span class="p">().</span><span class="nx">getTime</span><span class="p">();</span>
+</span><span class='line'>    <span class="kd">function</span> <span class="nx">a</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nb">window</span><span class="p">.</span><span class="nx">open</span><span class="p">(</span><span class="nx">f</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;toolbar=0,status=0,resizable=1,width=700,height=450,left=&#39;</span> <span class="o">+</span> <span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">width</span> <span class="o">-</span> <span class="mi">700</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="s1">&#39;,top=&#39;</span> <span class="o">+</span> <span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">height</span> <span class="o">-</span> <span class="mi">650</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span> <span class="nx">u</span><span class="p">.</span><span class="nx">href</span> <span class="o">=</span> <span class="nx">f</span>
+</span><span class='line'>    <span class="p">};</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="sr">/Firefox/</span><span class="p">.</span><span class="nx">test</span><span class="p">(</span><span class="nx">navigator</span><span class="p">.</span><span class="nx">userAgent</span><span class="p">))</span> <span class="nx">setTimeout</span><span class="p">(</span><span class="nx">a</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">else</span> <span class="nx">a</span><span class="p">()</span>
+</span><span class='line'><span class="p">})(</span><span class="nx">screen</span><span class="p">,</span> <span class="nb">document</span><span class="p">,</span> <span class="nb">encodeURIComponent</span><span class="p">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>从上述的代码可以看到，最主要的代码就是通过window对象来打开一个新的窗口，指定窗口就是咱们本地的一个API请求，链接格式为<a href="http://localhost:3000/create,">http://localhost:3000/create,</a> 以及两个参数link和title，对应咱们生成markdown的内容。</p>
+
+<blockquote><p>这里如何使用呢？在app/views/welcome/index.html.erb中，将上述的Js代码放置在一个a标签中，将代码作为链接href属性的值。启动rails的服务器，输入<a href="http://localhost:3000/index">http://localhost:3000/index</a> 就会显示这个相对应的url，我们将其拖拽至我们的书签栏，则就会使用我们的插件工具了。
+2. 搭建获取链接的API
+  这里主要使用Ruby on Rails来搭建一个本地的服务器，毕竟是号称10分钟创建一个完整的Web应用程序的语言。
+  对应的主要代码目录在app/controllers/article_controller.rb文件中，通过api请求<em><a href="http://localhost:3000/create?link=">http://localhost:3000/create?link=</a>{0}&amp;title&amp;{1}</em> 来获取需要保存的链接，主要代码如下：</p></blockquote>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">class</span> <span class="nc">ArticleController</span> <span class="o">&lt;</span> <span class="no">ApplicationController</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">create</span>
+</span><span class='line'>    <span class="n">title</span> <span class="o">=</span> <span class="n">params</span><span class="o">[</span><span class="ss">:title</span><span class="o">]</span>
+</span><span class='line'>    <span class="n">link</span> <span class="o">=</span> <span class="n">params</span><span class="o">[</span><span class="ss">:link</span><span class="o">]</span>
+</span><span class='line'>    <span class="n">data</span> <span class="o">=</span> <span class="o">[]</span>
+</span><span class='line'>    <span class="n">file_name</span> <span class="o">=</span> <span class="no">Rails</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">to_s</span> <span class="o">+</span> <span class="s1">&#39;/README.md&#39;</span>
+</span><span class='line'>    <span class="n">status</span> <span class="o">=</span> <span class="s1">&#39;ok&#39;</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">title</span><span class="o">.</span><span class="n">nil?</span> <span class="ow">or</span> <span class="n">link</span><span class="o">.</span><span class="n">nil?</span>
+</span><span class='line'>      <span class="n">status</span> <span class="o">=</span> <span class="s1">&#39;error&#39;</span>
+</span><span class='line'>    <span class="k">else</span>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="no">Date</span><span class="o">.</span><span class="n">today</span><span class="o">.</span><span class="n">mday</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">new_file_name</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="no">Rails</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">to_s</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="no">Date</span><span class="o">.</span><span class="n">today</span><span class="o">.</span><span class="n">prev_day</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">to_s</span><span class="si">}</span><span class="s2">.md&quot;</span>
+</span><span class='line'>        <span class="no">File</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">new_file_name</span><span class="p">)</span>
+</span><span class='line'>        <span class="no">File</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s1">&#39;w+&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>      <span class="n">data</span> <span class="o">=</span> <span class="no">DataHelper</span><span class="o">.</span><span class="n">append_to</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">link</span><span class="p">)</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">!</span><span class="n">data</span><span class="o">.</span><span class="n">nil?</span>
+</span><span class='line'>        <span class="no">DataHelper</span><span class="o">.</span><span class="n">write_to</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>    <span class="no">GitHelper</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">render</span> <span class="ss">json</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;status&#39;</span> <span class="o">=&gt;</span> <span class="n">status</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span> <span class="o">=&gt;</span> <span class="n">data</span><span class="p">}</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上述代码中，主要的逻辑有三处：
++ 判断当天是否为当月的第一天，若是的话，则需要重命名README.md文件为上个月的文件，形如‘2016-01.md'格式的文件。主要的目的是将咱们的文章按每个月份来分类。
++ 通过DataHelper类来添加链接及其对应的标题，可以看到主要通过DataHelper的append_to和write_to方法来实现链接标题的添加。代码如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">module</span> <span class="nn">DataHelper</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1"># 根据文件获取添入标题和链接之后的最新文本内容</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">append_to</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">link</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">data</span> <span class="o">=</span> <span class="o">[]</span>
+</span><span class='line'>    <span class="n">changed</span> <span class="o">=</span> <span class="kp">false</span>
+</span><span class='line'>    <span class="n">inserted</span> <span class="o">=</span> <span class="kp">false</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="no">File</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span><span class="o">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">line</span><span class="o">|</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">!</span><span class="n">inserted</span> <span class="ow">and</span> <span class="n">line</span><span class="o">.</span><span class="n">start_with?</span><span class="p">(</span><span class="s1">&#39;###&#39;</span><span class="p">)</span>
+</span><span class='line'>        <span class="c1"># 当前行为具体的日期</span>
+</span><span class='line'>        <span class="n">date_str</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">slice</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span> <span class="o">+</span> <span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">squish</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">is_date</span><span class="p">(</span><span class="n">date_str</span><span class="p">))</span>
+</span><span class='line'>          <span class="c1"># 当前日期为今天，则在当前天下添加新的一行数据</span>
+</span><span class='line'>          <span class="k">if</span><span class="p">(</span><span class="no">Date</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">date_str</span><span class="p">)</span> <span class="o">==</span> <span class="no">Date</span><span class="o">.</span><span class="n">today</span><span class="p">)</span>
+</span><span class='line'>            <span class="n">data</span><span class="o">.</span><span class="n">push</span> <span class="n">line</span>
+</span><span class='line'>            <span class="n">data</span><span class="o">.</span><span class="n">push</span> <span class="s2">&quot;+ [</span><span class="si">#{</span><span class="n">title</span><span class="si">}</span><span class="s2">](</span><span class="si">#{</span><span class="n">link</span><span class="si">}</span><span class="s2">)&lt;br&gt;</span><span class="se">\n</span><span class="s2">&quot;</span>
+</span><span class='line'>            <span class="n">changed</span> <span class="o">=</span> <span class="kp">true</span>
+</span><span class='line'>            <span class="n">inserted</span> <span class="o">=</span> <span class="kp">true</span>
+</span><span class='line'>          <span class="c1"># 当前日期小于今天，则新建今天的数据</span>
+</span><span class='line'>          <span class="k">elsif</span><span class="p">(</span><span class="no">Date</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">date_str</span><span class="p">)</span> <span class="o">&lt;</span> <span class="no">Date</span><span class="o">.</span><span class="n">today</span><span class="p">)</span>
+</span><span class='line'>            <span class="n">data</span><span class="o">.</span><span class="n">push</span> <span class="s2">&quot;### </span><span class="si">#{</span><span class="no">Date</span><span class="o">.</span><span class="n">today</span><span class="si">}</span><span class="s2">&lt;br&gt;</span><span class="se">\n</span><span class="s2">&quot;</span>
+</span><span class='line'>            <span class="n">data</span><span class="o">.</span><span class="n">push</span> <span class="s2">&quot;+ [</span><span class="si">#{</span><span class="n">title</span><span class="si">}</span><span class="s2">](</span><span class="si">#{</span><span class="n">link</span><span class="si">}</span><span class="s2">)&lt;br&gt;</span><span class="se">\n</span><span class="s2">&quot;</span>
+</span><span class='line'>            <span class="n">data</span><span class="o">.</span><span class="n">push</span> <span class="s2">&quot;</span><span class="se">\r\n</span><span class="s2">&quot;</span>
+</span><span class='line'>            <span class="n">inserted</span> <span class="o">=</span> <span class="kp">true</span>
+</span><span class='line'>          <span class="k">end</span>
+</span><span class='line'>        <span class="k">end</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">!</span><span class="n">changed</span>
+</span><span class='line'>        <span class="n">data</span><span class="o">.</span><span class="n">push</span> <span class="n">line</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>      <span class="n">changed</span> <span class="o">=</span> <span class="kp">false</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>    <span class="c1"># 若没有添加，则表示是个新建的文件，直接添加今天的数据</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">inserted</span><span class="p">)</span>
+</span><span class='line'>       <span class="n">data</span><span class="o">.</span><span class="n">push</span> <span class="s2">&quot;### </span><span class="si">#{</span><span class="no">Date</span><span class="o">.</span><span class="n">today</span><span class="si">}</span><span class="s2">&lt;br&gt;</span><span class="se">\n</span><span class="s2">&quot;</span>
+</span><span class='line'>       <span class="n">data</span><span class="o">.</span><span class="n">push</span> <span class="s2">&quot;+ [</span><span class="si">#{</span><span class="n">title</span><span class="si">}</span><span class="s2">](</span><span class="si">#{</span><span class="n">link</span><span class="si">}</span><span class="s2">)&lt;br&gt;</span><span class="se">\n</span><span class="s2">&quot;</span>
+</span><span class='line'>       <span class="n">data</span><span class="o">.</span><span class="n">push</span> <span class="s2">&quot;</span><span class="se">\r\n</span><span class="s2">&quot;</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>    <span class="n">data</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1"># 向文件中写入data</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">write_to</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">file</span> <span class="o">=</span> <span class="no">File</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="s1">&#39;w+&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">data</span><span class="o">.</span><span class="n">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">line</span><span class="o">|</span>
+</span><span class='line'>      <span class="n">file</span><span class="o">.</span><span class="n">write</span> <span class="n">line</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>    <span class="n">file</span><span class="o">.</span><span class="n">close</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1"># 判断字符是否为一个日期</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">is_date</span><span class="p">(</span><span class="n">str</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">result</span> <span class="o">=</span> <span class="kp">false</span>
+</span><span class='line'>    <span class="k">begin</span>
+</span><span class='line'>      <span class="no">Date</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">str</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">result</span> <span class="o">=</span> <span class="kp">true</span>
+</span><span class='line'>    <span class="k">rescue</span> <span class="no">ArgumentError</span>
+</span><span class='line'>      <span class="n">result</span> <span class="o">=</span> <span class="kp">false</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>    <span class="n">result</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>在Datahelper的append_to方法中，是通过逐行读取文件，根据文件对应的日期标题，获取到相应的日期，判断当前日期是否大于获取的日期，大于的时候则可直接添加，等于的时候则可在日期下面的第一行中插入，最后我们获取的将是一个data的数组。另外，使用write_to将data中的数据，逐行写入文件中。</p>
+
+<ul>
+<li>Git的自动提交，这里实现的主要的代码在GitHelper中，其中的代码呈上：</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">module</span> <span class="nn">GitHelper</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">commit</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">t</span> <span class="o">=</span> <span class="nb">fork</span> <span class="k">do</span>
+</span><span class='line'>      <span class="no">Signal</span><span class="o">.</span><span class="n">trap</span><span class="p">(</span><span class="s2">&quot;HUP&quot;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="nb">system</span> <span class="s1">&#39;git status&#39;</span>
+</span><span class='line'>        <span class="nb">system</span> <span class="s1">&#39;git add .&#39;</span>
+</span><span class='line'>        <span class="nb">system</span> <span class="s2">&quot;git commit -am &#39;add </span><span class="si">#{</span><span class="n">title</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+</span><span class='line'>        <span class="nb">system</span> <span class="s1">&#39;git pull --rebase&#39;</span>
+</span><span class='line'>        <span class="nb">system</span> <span class="s1">&#39;git push&#39;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>    <span class="no">Process</span><span class="o">.</span><span class="n">kill</span><span class="p">(</span><span class="s2">&quot;HUP&quot;</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>我们知道Git提交是件耗时的操作，所以为了提高API的响应速度，这里通过使用异步来提交Git请求，可以看到使用rebase来提交请求，所以出现冲突的时候，我们得自己手动解决了。</p>
+
+<h3>使用</h3>
+
+<ul>
+<li>打开项目所在的目录，使用<strong> rails s</strong>来启动服务</li>
+<li>在浏览器中输入 <a href="http://localhost:3000/index">http://localhost:3000/index</a> 来显示我们需要的书签链接，如图所示；</li>
+</ul>
+
+
+<p><img src="http://alighters.github.io/imgs/%E4%B9%A6%E7%AD%BE%E9%93%BE%E6%8E%A5.png" alt="书签链接.png" /></p>
+
+<ul>
+<li>将上图中的链接拖拽至chrome的书签栏中，如图：</li>
+</ul>
+
+
+<p><img src="http://alighters.github.io/imgs/%E4%B9%A6%E7%AD%BE.png" alt="书签.png" /></p>
+
+<ul>
+<li>点击<strong>fav</strong>书签，就可保存当前的页面了，并自动提交了。</li>
+</ul>
+
+
+<h3>总结</h3>
+
+<p>这样，我们一个很简单的文章记录加自动提交的功能就完成了。当然还有许多功能可以做一些扩展，例如，可以支持不同的GitHub的仓库；做成chrome的插件来方便使用。最后，放上代码地址：<a href="https://github.com/david-wei/MediumArticles">代码地址</a></p>
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2016/02/29/one-click-collecto-to-github/">/blog/2016/02/29/one-click-collecto-to-github/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2016-02-29T22:33:04+00:00'><span class='date'>2016-02-29</span> <span class='time'>10:33 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ruby/'>ruby</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2016/02/29/one-click-collecto-to-github/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2016/02/29/one-click-collecto-to-github/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/02/10/2015-nian-zhong-zong-jie/" title="Previous Post: 2015年终总结">&laquo; 2015年终总结</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/03/02/programmer-look-product/" title="Next Post: 程序猿看产品开发">程序猿看产品开发 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2016/02/29/one-click-collecto-to-github/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2016/02/29/one-click-collecto-to-github/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,354 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>程序猿看产品开发 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="程序猿看产品开发 2016-03-02 11:36 pm | Comments 在接近三年的开发生涯中，做过了不少项目，但发现个人能力的成长上确没有达到自己所期望的程度。不能说自己不够努力，细细想来，每天都处于忙碌的状态。但是是否处于一个高效的工作状态，在开发中处于良性的循环？在产品开发的过程中 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2016/03/02/programmer-look-product/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">程序猿看产品开发</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-03-02T23:36:10+00:00'><span class='date'>2016-03-02</span> <span class='time'>11:36 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><img src="http://alighters.github.io/imgs/think.png" alt="Paste_Image.png" /></p>
+
+<!-- more -->
+
+
+<p>在接近三年的开发生涯中，做过了不少项目，但发现个人能力的成长上确没有达到自己所期望的程度。不能说自己不够努力，细细想来，每天都处于忙碌的状态。但是是否处于一个高效的工作状态，在开发中处于良性的循环？在产品开发的过程中，注重的仅仅是完成开发任务，还是关注产品的性能、架构以及代码的质量？在这些方面，就做的相当差劲了。</p>
+
+<p>当然，作为程序员，这些方面都是我们应该关注的，毕竟这对个人的职业发展是相当重要的。但这只是个空口的希望（这句有点奇怪），现在的互联网行业中，产品的开发是处于快速迭代的时期，需求的不断改动对开发工作带来很大的影响，使我们的效率大打折扣。<strong>怎样使产品开发更加高效，质量更高，同时保证程序员对产品实现有着更深入的思考？</strong> 这便是作者思考尝试解决的问题，应该从以下几个方面做起：</p>
+
+<h3>1. 流程划分</h3>
+
+<p>  <strong>清晰流程</strong>，详细的交互设计文档以及后台接口基本提供完善，才可进入App开发的阶段。我们在App开发的开始，是需要针对设计交互文档确认过，细至每个细节的交互都了解；开发过程中，可能产生的一些交互问题，都应该在交互文档详细地体现出来，做到一切有迹可循。程序员在开发过程中不再有模糊的交互，不再有口头上的交流，是我们在文档最终定稿应该达到的理想效果。需明白，在开发过程中，口头交流来确定交互的实现，对开发效率都是大打折扣的，出了问题，我们都是没法责任到人的。</p>
+
+<p>  这样，就要求在前期设计交互文档的人员的责任比较重，需要针对每个细节的实现都要考虑清楚，产品经理在对一个新的迭代的开发的同时，需要明确提及到这个迭代中的会涉及到的交互的实现。人无完人，不能各个层面都涉及到，所以在这个期间，可以让程序员加入来讨论，毕竟最后的实现是需要程序员来完成的嘛，有问题的过程再确定重新形成方案，必要的时候，可以给与程序员一定的调研时间，当然考虑地越多，意味着我们的工作将能够更加地明确。</p>
+
+<p>  清晰地可以看出一个版本的开发将会有两个阶段，<em>阶段一</em> <strong>需求的定义形成设计文档，主要角色有产品经理、产品设计、产品交互；</strong> *阶段二 * <strong>程序员进入开发阶段最后交付完整的产品。</strong>此时，我们可以让下一个版本跟当前版本做一个简单的交错，即在阶段二中，产品进入下一个版本的的需求设计阶段，借此来并行地保证各个部门的高效工作。</p>
+
+<p>  虽然看起来在操作过程中，可能会遇到不可料想的麻烦，毕竟没有一成不变地需求，这样就需要产品经理权衡，尽量将这些需求放在下个版本中，将是最好的方式。不然交错地流程开发，带来更多的是开发成本的上升，产品的迭代周期的延长。</p>
+
+<h3>2. 规范定义</h3>
+
+<p>  <strong>界面设计、接口设计、App设计定义一些通用的规范。</strong>
++ 接口设计需要对返回的数据进行统一格式。譬如：统一返回的是 JsonObject，其中包装成功状态result 以及错误的信息，真正的数据则统一放置在 data 字段中进行处理。
++ 界面设计遵循设计规范。 Android 可以选择 Material Design，苹果也有自己的设计规范。若是不采用这些，则需要对一些通用的样式，做些统一定义，譬如常有的间距，弹出框样式，常用的颜色值，字体大小等等。这样客户端也可针对这些定义，遇到的时候则可直接使用。
++ App开发的规范。统一的命名、格式化文件标准、尽量清晰的处理逻辑、类文件编写。</p>
+
+<p>定义规范，即多做约定，最直接的好处就是：多人员协作能够有一套的标准，不至于杂乱无章。</p>
+
+<h3>3. 角色明确</h3>
+
+<p>  这一点在小公司可能不太清晰，经常出现一人兼多职的情况，不太好定义。在成熟公司，这一点是相当重要的，因为角色到人，使得我们可以精确到单一问题该有何人负责。若是一个团队中出现职责不清晰的情况，使得我们解决一个问题便会出现踢雪球的情况，问题得不到解决，雪球还有变大的可能。</p>
+
+<h3>4. 产品至上</h3>
+
+<p>  产品是最最最重要的。最终的成果都是拿产品来说话的，即使再牛逼的销售团队，再漂亮的设计到产品上，也经不住产品的不断闪退，卡顿，高耗电，不人性化。而这最终的成果的展示都是在程序员身上，产品的优化又是一个任重道远的过程，毕竟你产品经理还要加功能。所以应该以程序员的工作为主，API设计以及UI团队应配合甚至服务于程序员的工作，尽量保证程序员能够高效地工作。遇到过App展示一个界面，要发送三个甚至更多的API请求，只想说真是够了。所以这里应当简化App端的工作，能尽量少在客户端做的就少做，服务器端的改动肯定比客户端来的容易些。</p>
+
+<h3>总结</h3>
+
+<p>作者是站在一个程序员的角度上，以及要不断迭代地去开发一款长周期的产品，来看待产品开发应该具有一个怎样正确的姿势的，欢迎来拍砖讨论。当然，如果你就只是想快速开发出一款产品，那我上面的都是瞎扯淡了。。</p>
+
+<h3>PS</h3>
+
+<blockquote><p>这里感谢<a href="https://github.com/laobie">Jaeger</a>大神的审阅，并提出的修改。</p></blockquote>
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2016/03/02/programmer-look-product/">/blog/2016/03/02/programmer-look-product/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2016-03-02T23:36:10+00:00'><span class='date'>2016-03-02</span> <span class='time'>11:36 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/sui-bi/'>随笔</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2016/03/02/programmer-look-product/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2016/03/02/programmer-look-product/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/02/29/one-click-collecto-to-github/" title="Previous Post: 一键收藏至Github">&laquo; 一键收藏至Github</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/03/20/rails-deploy-summary/" title="Next Post: rails的部署实践总结">rails的部署实践总结 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2016/03/02/programmer-look-product/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2016/03/02/programmer-look-product/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
