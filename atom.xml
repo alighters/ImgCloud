@@ -4,7 +4,7 @@
   <title><![CDATA[alighters]]></title>
   <link href="http://alighters.github.io/blog/atom.xml" rel="self"/>
   <link href="http://alighters.github.io/blog/"/>
-  <updated>2020-07-28T00:22:56+08:00</updated>
+  <updated>2020-07-28T22:38:08+08:00</updated>
   <id>http://alighters.github.io/blog/</id>
   <author>
     <name><![CDATA[alighters]]></name>
@@ -6887,7 +6887,7 @@ ios: 自带的 javascriptcore</p>
     <id>http://alighters.github.io/blog/blog/2016/08/26/hashmap-knowledge-elements</id>
     <content type="html"><![CDATA[<p>提及 HashMap，大家都耳熟能详了，本文不会再讲它的实现原理，只对其中的一些小的实现细节进行罗列。</p>
 
-<p><img src="http://alighters.github.io/imgs/hashmap.png" alt="hashmap" /></p>
+<p><img src="http://alighters.github.io/files/imgs/hashmap.png" alt="hashmap" /></p>
 
 <!-- more -->
 

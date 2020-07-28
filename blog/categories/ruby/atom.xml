@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Ruby | alighters]]></title>
   <link href="http://alighters.github.io/blog/blog/categories/ruby/atom.xml" rel="self"/>
   <link href="http://alighters.github.io/blog/"/>
-  <updated>2020-07-28T00:22:56+08:00</updated>
+  <updated>2020-07-28T22:38:08+08:00</updated>
   <id>http://alighters.github.io/blog/</id>
   <author>
     <name><![CDATA[alighters]]></name>
@@ -337,7 +337,7 @@ Octopress的命令，都是通过rake来执行的，接下来，咱们来看一�
 </span></code></pre></td></tr></table></div></figure>
 之后，会看到提供给的提示是端口4000，在浏览器中输入：<code>localhost: 4000</code>，则可以看到我们的first blog了。如图：</p>
 
-<p><img src="http://alighters.github.io/imgs/first_blog.png" alt="First blog.png" /></p>
+<p><img src="http://alighters.github.io/files/imgs/first_blog.png" alt="First blog.png" /></p>
 
 <ul>
 <li>错误解决
@@ -626,7 +626,7 @@ Octopress的命令，都是通过rake来执行的，接下来，咱们来看一�
 </span></code></pre></td></tr></table></div></figure>
 这里，笔者稍微简单修改之后的界面，来看看效果如何：</p>
 
-<p><img src="http://alighters.github.io/imgs/blog_view.png" alt="效果.png" />
+<p><img src="http://alighters.github.io/files/imgs/blog_view.png" alt="效果.png" />
 有木有感觉异常简单呢？</p>
 
 <h2>参考资料</h2>
@@ -904,14 +904,14 @@ end
 </ul>
 
 
-<p><img src="http://alighters.github.io/imgs/%E4%B9%A6%E7%AD%BE%E9%93%BE%E6%8E%A5.png" alt="书签链接.png" /></p>
+<p><img src="http://alighters.github.io/files/imgs/%E4%B9%A6%E7%AD%BE%E9%93%BE%E6%8E%A5.png" alt="书签链接.png" /></p>
 
 <ul>
 <li>将上图中的链接拖拽至chrome的书签栏中，如图：</li>
 </ul>
 
 
-<p><img src="http://alighters.github.io/imgs/%E4%B9%A6%E7%AD%BE.png" alt="书签.png" /></p>
+<p><img src="http://alighters.github.io/files/imgs/%E4%B9%A6%E7%AD%BE.png" alt="书签.png" /></p>
 
 <ul>
 <li>点击<strong>fav</strong>书签，就可保存当前的页面了，并自动提交了。</li>
