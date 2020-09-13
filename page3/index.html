@@ -9,7 +9,7 @@
   <meta name="author" content="alighters">
 
   
-  <meta name="description" content="遇到了JS的变量声明提升，英文名为Hosting，具体来讲是指JS在对当前作用域中的声明代码，会将其提升至当前作用域的最顶端。本文通过几个示例来详细理解一下： ">
+  <meta name="description" content="提及 HashMap，大家都耳熟能详了，本文不会再讲它的实现原理，只对其中的一些小的实现细节进行罗列。 ">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +78,123 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/08/26/hashmap-knowledge-elements/">HashMap 实现细节点整理</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-08-26T20:19:00+08:00'><span class='date'>2016-08-26</span> <span class='time'>8:19 pm</span></time>
+        
+           | <a href="/blog/2016/08/26/hashmap-knowledge-elements/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/08/26/hashmap-knowledge-elements/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>提及 HashMap，大家都耳熟能详了，本文不会再讲它的实现原理，只对其中的一些小的实现细节进行罗列。</p>
+
+<p><img src="http://alighters.github.io/files/imgs/hashmap.png" alt="hashmap" /></p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/08/26/hashmap-knowledge-elements/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/">RxJava+Retrofit实现全局过期token自动刷新Demo篇</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-08-22T10:03:00+08:00'><span class='date'>2016-08-22</span> <span class='time'>10:03 am</span></time>
+        
+           | <a href="/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在上篇文章<a href="http://alighters.com/blog/2016/05/02/rxjava-plus-retrofitshi-xian-wang-luo-dai-li/">Rxjava+Retrofit 实现全局过期 Token 自动刷新</a>中，主讲了实现的思想，发布之后，有些小伙伴抱怨没有完整的 Demo，所以在这里重新补上了一个姗姗来迟的简单的实例。<a href="https://github.com/alighters/AndroidDemos/commit/a7266bef2c0fee2b60f5ef2c3ecd06456d624eef">Android代码点我</a></p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/06/25/threadlocal-in-android-message/">ThreadLocal在Android消息机制中的作用</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-06-25T17:26:00+08:00'><span class='date'>2016-06-25</span> <span class='time'>5:26 pm</span></time>
+        
+           | <a href="/blog/2016/06/25/threadlocal-in-android-message/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/06/25/threadlocal-in-android-message/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>提及Android的消息机制，相信这是Android开发者非常熟悉，并且相当基础的一个知识点了。那这里还有什么需要讲的呢？这里，先抛出一个问题：</p>
+
+<h2>问题</h2>
+
+<p>我们在使用Handler的时候，都知道其必须要跟一个Looper绑定的。而在UI线程可直接初始化Handler来使用，但是在子线程则不行，系统会抛出一个必须调用<code>Looper.prepare()</code>的异常信息。缘由在于，当初始化<code>Handler</code>的时候，其会通过<code>Looper</code>来获取当前的Looper，代码如下：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/06/25/threadlocal-in-android-message/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -360,124 +477,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2016/05/02/rxjava-plus-retrofitshi-xian-wang-luo-dai-li/">Rxjava+Retrofit 实现全局过期 Token 自动刷新</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2016-05-02T17:26:00+08:00'><span class='date'>2016-05-02</span> <span class='time'>5:26 pm</span></time>
-        
-           | <a href="/blog/2016/05/02/rxjava-plus-retrofitshi-xian-wang-luo-dai-li/#disqus_thread"
-             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/05/02/rxjava-plus-retrofitshi-xian-wang-luo-dai-li/">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>我们在做客户端的设计实现底层网络架构时候，常常不可避免的一个问题：token的有效验证，若是token过期，则需要先执行refresh token的操作，若是执行refresh token也无效，则需要用户再执行登陆的过程中；而这个refresh token的操作，按理来说，对用户是不可见的。这样的话，我们应该是怎么解决这个问题呢？</p>
-
-<p>本文是采用RxJava + Retrofit来实现网络请求的封装的，则主要讨论这种情况的实现；一般的写法，则主要是在回调中，做一些拦截的判断，这里就不叙述了。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2016/05/02/rxjava-plus-retrofitshi-xian-wang-luo-dai-li/">继续阅读 &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/">SimpleArrayMap源码解析</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2016-04-29T14:01:00+08:00'><span class='date'>2016-04-29</span> <span class='time'>2:01 pm</span></time>
-        
-           | <a href="/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/#disqus_thread"
-             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><blockquote><p>本文SimpleArrayMap源码分析是基于<strong>support v4 23.3.0</strong>版本的。
-另外，因ArrayMap涉及的多是算法知识，而主要的思想比较简单，所以本文会主要以代码为主，细讲其每个实现。</p></blockquote>
-
-<h2>为什么要引入ArrayMap？</h2>
-
-<p>  在Android设备上，因为App的内存限制，出现OOM的错误，导致开发者不得不关注一些底层数据结构以及去分析App的内存使用情况。提及数据结构，HashMap是我们最经常使用到的，而我们是否会注意其实现的细节以及有什么优缺点呢？</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2016/04/29/simplearraymapyuan-ma-jie-xi/">继续阅读 &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/">Octopress搭建博客之路1</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2016-04-23T22:00:00+08:00'><span class='date'>2016-04-23</span> <span class='time'>10:00 pm</span></time>
-        
-           | <a href="/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/#disqus_thread"
-             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>最近，因之前的博客是通过hexo搭建的，而通过hexo搭建的样式，有点烂大街的赶脚。另外，想对它做一些改动，看着它的代码有点头大。然后，就接触了Octopress，稍微了解了一下，就决定把我的博客迁到这个上面了。原因有二：1.是基于Ruby开发的，正是我目前在学的语言；2.相对于hexo提供更多的功能。废话不多说，开始搭建第一篇Octopress博客吧。</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2016/04/23/octopressda-jian-bo-ke-zhi-lu-1/">继续阅读 &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page4">&larr; Older</a>
@@ -499,6 +498,18 @@
 <section>
   <h1>最近文章</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1562-find-latest-group-of-size-m/">1562. Find Latest Group of Size M</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1498-number-of-subsequences-that-satisfy-the-given-sum-condition/">1498. Number of Subsequences That Satisfy the Given Sum Condition</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1524-number-of-sub-arrays-with-odd-sum/">1524. Number of Sub-arrays With Odd Sum</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
@@ -526,18 +537,6 @@
     
       <li class="post">
         <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
       </li>
     
   </ul>

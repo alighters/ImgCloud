@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
+<loc>http://alighters.github.io/blog/blog/2020/09/13/1562-find-latest-group-of-size-m/</loc>
+<lastmod>2020-09-13T23:26:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://alighters.github.io/blog/blog/2020/09/13/1498-number-of-subsequences-that-satisfy-the-given-sum-condition/</loc>
+<lastmod>2020-09-13T23:23:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://alighters.github.io/blog/blog/2020/09/13/1524-number-of-sub-arrays-with-odd-sum/</loc>
+<lastmod>2020-09-13T23:18:00+08:00</lastmod>
+</url>
+<url>
 <loc>http://alighters.github.io/blog/blog/2019/03/22/docker-config-ssr/</loc>
 <lastmod>2019-03-22T14:24:00+08:00</lastmod>
 </url>
@@ -202,15 +214,6 @@
 <loc>http://alighters.github.io/blog/blog/categories/docker/</loc>
 </url>
 <url>
-<loc>http://alighters.github.io/blog/page2/</loc>
-</url>
-<url>
-<loc>http://alighters.github.io/blog/page3/</loc>
-</url>
-<url>
-<loc>http://alighters.github.io/blog/page4/</loc>
-</url>
-<url>
-<loc>http://alighters.github.io/blog/page5/</loc>
+<loc>http://alighters.github.io/blog/blog/categories/leetcode/</loc>
 </url>
 </urlset>

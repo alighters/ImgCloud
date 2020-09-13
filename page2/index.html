@@ -9,8 +9,7 @@
   <meta name="author" content="alighters">
 
   
-  <meta name="description" content="在mac下，是没有meta键的。具体的修改方法： 若是系统自带的terminal，在设置的键盘选项中，将“使用option键作为meta键”
-若是在iterm下，需要在profiles->keys中，将“Left option key acts as”修改为“+Esc”即可。 ">
+  <meta name="description" content="降低启动速度的问题 文章中提到的一点，在 Android 设备 4.4 及其之前的版本，当开启 Multidex 的时候，启动速度会延长 15% 。而 5.0及以上的设备因使用 ART 的方式，其默认支持多 dex 的加载。 NoClassDefFoundError 的问题 ">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +78,129 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-11-01T18:10:00+08:00'><span class='date'>2016-11-01</span> <span class='time'>6:10 pm</span></time>
+        
+           | <a href="/blog/2016/11/01/multidex-problems/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/11/01/multidex-problems/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>降低启动速度的问题</h2>
+
+<p>文章中提到的一点，在 Android 设备 4.4 及其之前的版本，当开启 Multidex 的时候，启动速度会延长 15% 。而 5.0及以上的设备因使用 ART 的方式，其默认支持多 dex 的加载。</p>
+
+<h2>NoClassDefFoundError 的问题</h2>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/11/01/multidex-problems/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-11-01T18:09:00+08:00'><span class='date'>2016-11-01</span> <span class='time'>6:09 pm</span></time>
+        
+           | <a href="/blog/2016/11/01/create-gradle-plugin/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/11/01/create-gradle-plugin/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在使用 Android Studio 开发的同时，必定离不开 Gradle，再加之最近对 Gradle 在 InstanRun 所扮演的角色颇有兴趣。所以，这里先有一个开篇，理解并编写简单的 gradle plugin。</p>
+
+<h2>写一个简单的插件</h2>
+
+<p>创建一个 build.gradle 文件</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/11/01/create-gradle-plugin/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-10-27T14:12:00+08:00'><span class='date'>2016-10-27</span> <span class='time'>2:12 pm</span></time>
+        
+           | <a href="/blog/2016/10/27/bit-skill/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/10/27/bit-skill/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>之前接触到位运算的时候，总是似懂非懂，一脸萌比。最近花点时间，细细研究，其实发现也相当简单。下面来举两个相当实用的例子，来彻底掌握位运算。</p>
+
+<h2>异或实现交换</h2>
+
+<p>在涉及到两个数的相交换的诸多实现中，一个不错的及格的算法，就是利用加法来做。如下：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/10/27/bit-skill/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -385,123 +507,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2016/08/26/hashmap-knowledge-elements/">HashMap 实现细节点整理</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2016-08-26T20:19:00+08:00'><span class='date'>2016-08-26</span> <span class='time'>8:19 pm</span></time>
-        
-           | <a href="/blog/2016/08/26/hashmap-knowledge-elements/#disqus_thread"
-             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/08/26/hashmap-knowledge-elements/">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>提及 HashMap，大家都耳熟能详了，本文不会再讲它的实现原理，只对其中的一些小的实现细节进行罗列。</p>
-
-<p><img src="http://alighters.github.io/files/imgs/hashmap.png" alt="hashmap" /></p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2016/08/26/hashmap-knowledge-elements/">继续阅读 &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/">RxJava+Retrofit实现全局过期token自动刷新Demo篇</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2016-08-22T10:03:00+08:00'><span class='date'>2016-08-22</span> <span class='time'>10:03 am</span></time>
-        
-           | <a href="/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/#disqus_thread"
-             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>在上篇文章<a href="http://alighters.com/blog/2016/05/02/rxjava-plus-retrofitshi-xian-wang-luo-dai-li/">Rxjava+Retrofit 实现全局过期 Token 自动刷新</a>中，主讲了实现的思想，发布之后，有些小伙伴抱怨没有完整的 Demo，所以在这里重新补上了一个姗姗来迟的简单的实例。<a href="https://github.com/alighters/AndroidDemos/commit/a7266bef2c0fee2b60f5ef2c3ecd06456d624eef">Android代码点我</a></p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2016/08/22/rxjava-plus-retrofitshi-xian-zhi-demo/">继续阅读 &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2016/06/25/threadlocal-in-android-message/">ThreadLocal在Android消息机制中的作用</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2016-06-25T17:26:00+08:00'><span class='date'>2016-06-25</span> <span class='time'>5:26 pm</span></time>
-        
-           | <a href="/blog/2016/06/25/threadlocal-in-android-message/#disqus_thread"
-             data-disqus-identifier="http://alighters.github.io/blog/blog/2016/06/25/threadlocal-in-android-message/">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>提及Android的消息机制，相信这是Android开发者非常熟悉，并且相当基础的一个知识点了。那这里还有什么需要讲的呢？这里，先抛出一个问题：</p>
-
-<h2>问题</h2>
-
-<p>我们在使用Handler的时候，都知道其必须要跟一个Looper绑定的。而在UI线程可直接初始化Handler来使用，但是在子线程则不行，系统会抛出一个必须调用<code>Looper.prepare()</code>的异常信息。缘由在于，当初始化<code>Handler</code>的时候，其会通过<code>Looper</code>来获取当前的Looper，代码如下：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2016/06/25/threadlocal-in-android-message/">继续阅读 &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page3">&larr; Older</a>
@@ -523,6 +528,18 @@
 <section>
   <h1>最近文章</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1562-find-latest-group-of-size-m/">1562. Find Latest Group of Size M</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1498-number-of-subsequences-that-satisfy-the-given-sum-condition/">1498. Number of Subsequences That Satisfy the Given Sum Condition</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1524-number-of-sub-arrays-with-odd-sum/">1524. Number of Sub-arrays With Odd Sum</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
@@ -550,18 +567,6 @@
     
       <li class="post">
         <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2016/11/01/multidex-problems/">Multidex 的问题</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2016/11/01/create-gradle-plugin/">创建 Gradle Plugin</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2016/10/27/bit-skill/">位运算之巧用</a>
       </li>
     
   </ul>

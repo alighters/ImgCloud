@@ -5,11 +5,11 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Multidex 的问题 - alighters</title>
+  <title>1498. Number of Subsequences That Satisfy the Given Sum Condition - alighters</title>
   <meta name="author" content="alighters">
 
   
-  <meta name="description" content="Multidex 的问题 2016-11-01 6:10 pm | Comments 降低启动速度的问题 文章中提到的一点，在 Android 设备 4.4 及其之前的版本，当开启 Multidex 的时候，启动速度会延长 15% 。而 5.0及以上的设备因使用 ART 的方式，其默认支持多 &hellip;">
+  <meta name="description" content="1498. Number of Subsequences That Satisfy the Given Sum Condition 2020-09-13 11:23 pm | Comments 具体链接： https://leetcode-cn.com/problems/number-of- &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://alighters.github.io/blog/blog/2016/11/01/multidex-problems/">
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2020/09/13/1498-number-of-subsequences-that-satisfy-the-given-sum-condition/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
@@ -81,7 +81,7 @@
   
   <header>
     
-      <h1 class="entry-title">Multidex 的问题</h1>
+      <h1 class="entry-title">1498. Number of Subsequences That Satisfy the Given Sum Condition</h1>
     
     
       <p class="meta">
@@ -90,7 +90,7 @@
 
 
 
-<time class='entry-date' datetime='2016-11-01T18:10:00+08:00'><span class='date'>2016-11-01</span> <span class='time'>6:10 pm</span></time>
+<time class='entry-date' datetime='2020-09-13T23:23:00+08:00'><span class='date'>2020-09-13</span> <span class='time'>11:23 pm</span></time>
         
            | <a href="#disqus_thread"
              data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
@@ -100,61 +100,72 @@
   </header>
 
 
-<div class="entry-content"><h2>降低启动速度的问题</h2>
+<div class="entry-content"><p>具体链接： <a href="https://leetcode-cn.com/problems/number-of-subsequences-that-satisfy-the-given-sum-condition/">https://leetcode-cn.com/problems/number-of-subsequences-that-satisfy-the-given-sum-condition/</a></p>
 
-<p>文章中提到的一点，在 Android 设备 4.4 及其之前的版本，当开启 Multidex 的时候，启动速度会延长 15% 。而 5.0及以上的设备因使用 ART 的方式，其默认支持多 dex 的加载。</p>
+<h2>思路</h2>
 
-<h2>NoClassDefFoundError 的问题</h2>
+<p>因题意中，不要求数组的连续，只需要求相应的组合即可。</p>
 
-<!-- more -->
+<p>所以，这里可以先进行数组的排序。
+遍历当前的数组，以当前数为基准，求 target - nums[i] 的值，在数组中，所处于的 Index 值。（可通过 bisect.bisect 的二分求解来得到此值。）</p>
 
+<p>当得到此 index 值，以包含当前  nums[i] ，来求一个可以的组合数。其选择的方案为从 <code>i + 1</code> 至 <code>index</code> 的数，可选或者不选，一共的组合数为：</p>
 
-<ul>
-<li>查看加载的类问题
-在目录  [buildDir]/intermediates/multi-dex/[buildType]/maindexlist.txt 中可查看在主 dex 文件中的类，（但并不是 100% 准确，可能会丢失一些类）</li>
-<li>解决办法：配置一个新的 multidex.keep 文件，用来指定在 mainDex 中包含的类。通过配置 gradle 文件，指定 gradle 打包过程中，执行 dex 生成时的 keep 文件追加。具体实施是创建一个新的 task，使用 finalizedBy 来指定在 create**MainDexClassList 任务之后执行。另外还需要指定 dx 执行时，添加 &ndash;minimal-main-dex 选项，来使 maindex 最小化。</li>
-</ul>
+<!--more -->
 
 
-<h2>如何判断 App 启动过程中哪些类是需要加载的呢？</h2>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="mi">2</span> <span class="o">**</span> <span class="p">(</span><span class="n">index</span> <span class="o">-</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
 
-<p>通过使用类加载 ClassLoader 中，其提供了方法 findLoadedClass。这个方法的作用是用来判断某个类是否被加载，所以文章中使用的技巧就是通过读在 second dex files 中的类，来判断主 dex 是否加载到。若是加载到，则我们就需要将这个类添加至 main dex 来提高 App 的启动速度。</p>
 
-<h2>解决与建议</h2>
+<p>所以，最后的结果数，就是将这些结果累加即可。</p>
 
-<p> 出现 65k 的问题时候，通过其他方式（重构、优化第三方 SDK的使用）来尽量避免使用 Multidex;若是不可避免地使用，需要对 Multidex 的方式进行优化来使用，来尽量提高我们 App 的启动速度。</p>
+<h2>代码</h2>
 
-<h3>延迟加载</h3>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="k">class</span> <span class="nc">Solution</span><span class="p">:</span>
+</span><span class='line'>    <span class="k">def</span> <span class="nf">numSubseq</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nums</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span class='line'>        <span class="n">nums</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">ans</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>        <span class="kn">import</span> <span class="nn">bisect</span>
+</span><span class='line'>        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">num</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">nums</span><span class="p">):</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">num</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">&lt;=</span> <span class="n">target</span><span class="p">:</span>
+</span><span class='line'>                <span class="n">index</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect</span><span class="p">(</span><span class="n">nums</span><span class="p">,</span> <span class="n">target</span> <span class="o">-</span> <span class="n">num</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+</span><span class='line'>                <span class="k">if</span> <span class="n">index</span> <span class="o">&gt;</span> <span class="n">i</span><span class="p">:</span>
+</span><span class='line'>                    <span class="n">ans</span> <span class="o">+=</span> <span class="mi">2</span> <span class="o">**</span> <span class="p">(</span><span class="n">index</span> <span class="o">-</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>            <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>                <span class="k">break</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">ans</span> <span class="o">%</span> <span class="p">(</span><span class="mi">10</span> <span class="o">**</span> <span class="mi">9</span> <span class="o">+</span> <span class="mi">7</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
 
-<p>对纯 java 文件，可以将其单独打成一个 dex，利用 Multidex 加载的原理，在当我们使用到相应 java 文件的时候，再加载这个 dex，来执行相应代码的调用。（方案有些不成熟，不支持涉及到资源文件的情况。）</p>
 
-<h2>其他</h2>
+<h2>注意事项</h2>
 
-<h3>1. 工具 ClassShark</h3>
-
-<p>在评论区，提到的一个软件 <a href="https://github.com/google/android-classyshark">android-classyshark</a>，可以帮我们更加容易分析 APK、dex、jar 中的使用内容，（不再通过 dex2jar, jd-gui等工具来查看）能够对 apk 中的内容一目了然, 功能非常强大。</p>
-
-<blockquote><p>在 Android Studio 2.2 之后的版本，其已经支持了对 apk 的分析，可以直接点击进行查看。</p></blockquote>
-
-<h3>2. dex2oat 与 dexopt</h3>
-
-<p>评论中关于 5.0及以上不受影响的讨论，主要原因是因为 5.0 采用了 ART 的编译方式，其是在 app 安装的时候执行的，期间对 dex 文件采用了 dex2oat 的执行过程，来对 dex 文件进行优化。而 5.0 之前的设备是没有这一步，其采用的 dexopt 的过程，并处理的是单个 dex 文件，这样也会影响了 multidex 的启动速度，但是这个是每次打开 app 都会进行的，并不是安装时执行的。</p>
-
-<blockquote><p>作者的关注点是在每次 App 打开的过程中， Multidex 带来的影响，所以这个讨论在这里并不是与主题太多相关，但是我们还是又必要了解一下的。</p></blockquote>
-
-<h2>参考资料</h2>
-
-<ul>
-<li><a href="https://medium.com/groupon-eng/android-s-multidex-slows-down-app-startup-d9f10b46770f#.nvl5amjzl">Android’s multidex slows down app startup</a></li>
-<li><a href="https://github.com/mmadev/multidex-sample">multidex-sample</a></li>
-<li><a href="https://medium.com/@Macarse/lazy-loading-dex-files-d41f6f37df0e#.9ftjpld1s">Lazy Loading Dex files</a></li>
-</ul>
-
+<p>在其他语言中，因求这个 2 的幂数，会存在溢出或者超时的情况。所以，都会使用预计算，这些 2  的幂数的结果。方便后续的加速求值。</p>
 </div>
 
 
 
-  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2016/11/01/multidex-problems/">/blog/2016/11/01/multidex-problems/</a></p></blockquote>
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2020/09/13/1498-number-of-subsequences-that-satisfy-the-given-sum-condition/">/blog/2020/09/13/1498-number-of-subsequences-that-satisfy-the-given-sum-condition/</a></p></blockquote>
 
   <p class="meta" style="text-align: center;">
   <span>给 Ta 个打赏吧...</span><br/><br/>
@@ -172,12 +183,12 @@
 
 
 
-<time class='entry-date' datetime='2016-11-01T18:10:00+08:00'><span class='date'>2016-11-01</span> <span class='time'>6:10 pm</span></time>
+<time class='entry-date' datetime='2020-09-13T23:23:00+08:00'><span class='date'>2020-09-13</span> <span class='time'>11:23 pm</span></time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/android/'>android</a>
+    <a class='category' href='/blog/categories/leetcode/'>leetcode</a>
   
 </span>
 
@@ -186,7 +197,7 @@
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2016/11/01/multidex-problems/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2016/11/01/multidex-problems/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2020/09/13/1498-number-of-subsequences-that-satisfy-the-given-sum-condition/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2020/09/13/1498-number-of-subsequences-that-satisfy-the-given-sum-condition/" >Tweet</a>
   
   
   <div class="g-plusone" data-size="medium"></div>
@@ -197,10 +208,10 @@
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2016/11/01/create-gradle-plugin/" title="Previous Post: 创建 Gradle Plugin">&laquo; 创建 Gradle Plugin</a>
+        <a class="basic-alignment left" href="/blog/2020/09/13/1524-number-of-sub-arrays-with-odd-sum/" title="Previous Post: 1524. Number of Sub-arrays With Odd Sum ">&laquo; 1524. Number of Sub-arrays With Odd Sum </a>
       
       
-        <a class="basic-alignment right" href="/blog/2017/01/16/multidex-generate/" title="Next Post: 理解 Multidex 生成">理解 Multidex 生成 &raquo;</a>
+        <a class="basic-alignment right" href="/blog/2020/09/13/1562-find-latest-group-of-size-m/" title="Next Post: 1562. Find Latest Group of Size M">1562. Find Latest Group of Size M &raquo;</a>
       
     </p>
   </footer>
@@ -318,8 +329,8 @@
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://alighters.github.io/blog/blog/2016/11/01/multidex-problems/';
-        var disqus_url = 'http://alighters.github.io/blog/blog/2016/11/01/multidex-problems/';
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2020/09/13/1498-number-of-subsequences-that-satisfy-the-given-sum-condition/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2020/09/13/1498-number-of-subsequences-that-satisfy-the-given-sum-condition/';
         var disqus_script = 'embed.js';
       
     (function () {

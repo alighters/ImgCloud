@@ -1,0 +1,506 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>1562. Find Latest Group of Size M - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="1562. Find Latest Group of Size M 2020-09-13 11:26 pm | Comments 思路 主要在于每次通过数组 arr 中的值，进行将 “0“ 变为 ”1“，从而寻找出现连续的 1 值，问题就在于如何记录此时所出现的连续的 “1” 的字符串的长度 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2020/09/13/1562-find-latest-group-of-size-m/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">1562. Find Latest Group of Size M</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2020-09-13T23:26:00+08:00'><span class='date'>2020-09-13</span> <span class='time'>11:26 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h1>思路</h1>
+
+<p>主要在于每次通过数组 arr 中的值，进行将  “0“ 变为 ”1“，从而寻找出现连续的 1 值，问题就在于如何记录此时所出现的连续的 “1” 的字符串的长度。 （注意，这里不能再去循环遍历，肯定会超时。）</p>
+
+<h1>前置</h1>
+
+<p>n 表示数组的长度</p>
+
+<!--more-->
+
+
+<h1>方案一</h1>
+
+<blockquote><p><em>参照 <a href="https://leetcode.com/problems/find-latest-group-of-size-m/discuss/806718/Python-Clean-Union-Find-solution-with-explanation-O(N"> [Python] Clean Union-Find solution with explanation - O(N)</a>)</em></p></blockquote>
+
+<p>在 “0”  变为 “1” 的过程中，之后就需要对存在的连续的 “1” 进行合并。这里就想到了 unionset 。在 unionset 进行 union 的过程中，需要考虑 union 后连续的 “1” 的长度的问题。所以这里使用了 rank 数组来记录，合并后连续 “1” 的长度值。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">class</span> <span class="nc">UnionFind</span><span class="p">:</span>
+</span><span class='line'>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">def</span> <span class="nf">find</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+</span><span class='line'>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">==</span> <span class="n">s</span><span class="p">:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">s</span>
+</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">[</span><span class="n">s</span><span class="p">])</span>
+</span><span class='line'>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">def</span> <span class="nf">union</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+</span><span class='line'>        <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">a</span> <span class="o">==</span> <span class="n">b</span><span class="p">:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="bp">False</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">a</span> <span class="o">&gt;</span> <span class="n">b</span><span class="p">:</span>
+</span><span class='line'>            <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span>
+</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span>
+</span><span class='line'>        <span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="p">[</span><span class="n">b</span><span class="p">]</span>
+</span><span class='line'>        <span class="k">return</span> <span class="bp">True</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">class</span> <span class="nc">Solution</span><span class="p">:</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">def</span> <span class="nf">findLatestStep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arr</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span class='line'>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span> <span class="o">==</span> <span class="n">M</span><span class="p">:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">M</span>
+</span><span class='line'>        <span class="n">uf</span> <span class="o">=</span> <span class="n">UnionFind</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">))</span>
+</span><span class='line'>        <span class="n">ans</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+</span><span class='line'>        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">num</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">arr</span><span class="p">):</span>
+</span><span class='line'>            <span class="n">uf</span><span class="o">.</span><span class="n">rank</span><span class="p">[</span><span class="n">num</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span class='line'>            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="p">(</span><span class="n">num</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+</span><span class='line'>                <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">j</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">):</span>
+</span><span class='line'>                    <span class="k">if</span> <span class="n">uf</span><span class="o">.</span><span class="n">rank</span><span class="p">[</span><span class="n">uf</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">j</span><span class="p">)]</span> <span class="o">==</span> <span class="n">M</span><span class="p">:</span>
+</span><span class='line'>                        <span class="n">ans</span> <span class="o">=</span> <span class="n">i</span>
+</span><span class='line'>                    <span class="k">if</span> <span class="n">uf</span><span class="o">.</span><span class="n">rank</span><span class="p">[</span><span class="n">j</span><span class="p">]:</span>
+</span><span class='line'>                        <span class="n">uf</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">ans</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>方案二</h1>
+
+<p>逆向考虑，将数组中的值逆向插入到 [ 0, n + 1] 的数组中。
+此时的操作，代表着将连续的 1 中的一项，修改为 ”0”。而根据其在数组左右两项的值做差，可求得其左右的连续的 “1” 的长度。</p>
+
+<p>举例：[ 3, 5, 1, 2, 4]， 要插入的数组为 [0, 6]
+1. 插入 4， 结果为 [0, 4, 6] ，左边连续的 “1” 的长度为 4 - 0 - 1 = 3，右边连续的 “1” 的长度为  6- 4 - 1 = 1
+2. 插入 2,    结果为 [0, 2, 4, 6] 左边连续的 “1” 的长度为 4 - 2 - 1 = 1，右边连续的 “1” 的长度为 2 - 0 - 1  = 1
+3. …</p>
+
+<p>代码如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">class</span> <span class="nc">Solution</span><span class="p">:</span>
+</span><span class='line'>    <span class="k">def</span> <span class="nf">findLatestStep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arr</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span class='line'>        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">if</span> <span class="n">M</span> <span class="o">==</span> <span class="n">n</span><span class="p">:</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">n</span>
+</span><span class='line'>        <span class="n">lis</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+</span><span class='line'>        <span class="k">for</span> <span class="n">num</span> <span class="ow">in</span> <span class="n">arr</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+</span><span class='line'>            <span class="kn">import</span> <span class="nn">bisect</span>
+</span><span class='line'>            <span class="n">index</span> <span class="o">=</span> <span class="n">bisect</span><span class="o">.</span><span class="n">bisect</span><span class="p">(</span><span class="n">lis</span><span class="p">,</span> <span class="n">num</span><span class="p">)</span>
+</span><span class='line'>            <span class="n">lis</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">num</span><span class="p">)</span>
+</span><span class='line'>            <span class="n">right</span> <span class="o">=</span> <span class="n">lis</span><span class="p">[</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">num</span> <span class="o">-</span> <span class="mi">1</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">right</span> <span class="o">==</span> <span class="n">M</span><span class="p">:</span>
+</span><span class='line'>                <span class="k">return</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span>
+</span><span class='line'>            <span class="n">left</span> <span class="o">=</span> <span class="n">num</span> <span class="o">-</span> <span class="n">lis</span><span class="p">[</span><span class="n">index</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">left</span> <span class="o">==</span> <span class="n">M</span><span class="p">:</span>
+</span><span class='line'>                <span class="k">return</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span>
+</span><span class='line'>            <span class="n">n</span> <span class="o">-=</span> <span class="mi">1</span>
+</span><span class='line'>        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>方案三</h1>
+
+<blockquote><p>参照  <a href="https://leetcode.com/problems/find-latest-group-of-size-m/discuss/806786/JavaC%2B%2BPython-Count-the-Length-of-Groups-O(N">lee215</a>)  大佬的答案</p></blockquote>
+
+<p>记录分析影响的左右边界的 长度值。</p>
+
+<p>使用两个数组进行更新记录：
+length 数组记录当前更新范围连续 “1” 的长度
+Count 记录每个长度出现的次数。最后一次出现的次数即为所求的值。</p>
+
+<p>代码如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">class</span> <span class="nc">Solution</span><span class="p">:</span>
+</span><span class='line'>    <span class="k">def</span> <span class="nf">findLatestStep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arr</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span class='line'>        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">length</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">count</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">res</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+</span><span class='line'>        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">num</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">arr</span><span class="p">):</span>
+</span><span class='line'>            <span class="n">left</span> <span class="o">=</span> <span class="n">length</span><span class="p">[</span><span class="n">num</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+</span><span class='line'>            <span class="n">right</span> <span class="o">=</span> <span class="n">length</span><span class="p">[</span><span class="n">num</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+</span><span class='line'>            <span class="n">length</span><span class="p">[</span><span class="n">num</span><span class="p">]</span> <span class="o">=</span> <span class="n">length</span><span class="p">[</span><span class="n">num</span> <span class="o">-</span> <span class="n">left</span><span class="p">]</span> <span class="o">=</span> <span class="n">length</span><span class="p">[</span><span class="n">num</span> <span class="o">+</span> <span class="n">right</span><span class="p">]</span> <span class="o">=</span> <span class="n">left</span> <span class="o">+</span> <span class="n">right</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'>            <span class="n">count</span><span class="p">[</span><span class="n">left</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
+</span><span class='line'>            <span class="n">count</span><span class="p">[</span><span class="n">right</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
+</span><span class='line'>            <span class="n">count</span><span class="p">[</span><span class="n">length</span><span class="p">[</span><span class="n">num</span><span class="p">]]</span> <span class="o">+=</span> <span class="mi">1</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">count</span><span class="p">[</span><span class="n">M</span><span class="p">]:</span>
+</span><span class='line'>                <span class="n">res</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">res</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2020/09/13/1562-find-latest-group-of-size-m/">/blog/2020/09/13/1562-find-latest-group-of-size-m/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2020-09-13T23:26:00+08:00'><span class='date'>2020-09-13</span> <span class='time'>11:26 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/leetcode/'>leetcode</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2020/09/13/1562-find-latest-group-of-size-m/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2020/09/13/1562-find-latest-group-of-size-m/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2020/09/13/1498-number-of-subsequences-that-satisfy-the-given-sum-condition/" title="Previous Post: 1498. Number of Subsequences That Satisfy the Given Sum Condition">&laquo; 1498. Number of Subsequences That Satisfy the Given Sum Condition</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/files/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1562-find-latest-group-of-size-m/">1562. Find Latest Group of Size M</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1498-number-of-subsequences-that-satisfy-the-given-sum-condition/">1498. Number of Subsequences That Satisfy the Given Sum Condition</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1524-number-of-sub-arrays-with-odd-sum/">1524. Number of Sub-arrays With Odd Sum</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2020/09/13/1562-find-latest-group-of-size-m/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2020/09/13/1562-find-latest-group-of-size-m/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
