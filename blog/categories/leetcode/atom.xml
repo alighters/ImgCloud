@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Leetcode | alighters]]></title>
   <link href="http://alighters.github.io/blog/blog/categories/leetcode/atom.xml" rel="self"/>
   <link href="http://alighters.github.io/blog/"/>
-  <updated>2020-09-13T23:31:41+08:00</updated>
+  <updated>2020-09-20T23:06:02+08:00</updated>
   <id>http://alighters.github.io/blog/</id>
   <author>
     <name><![CDATA[alighters]]></name>
@@ -12,6 +12,258 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[1494. Parallel Courses II]]></title>
+    <link href="http://alighters.github.io/blog/blog/2020/09/20/1494-parallel-courses-ii/"/>
+    <updated>2020-09-20T23:04:00+08:00</updated>
+    <id>http://alighters.github.io/blog/blog/2020/09/20/1494-parallel-courses-ii</id>
+    <content type="html"><![CDATA[<h1>问题</h1>
+
+<p>拓扑排序在此题不适合的原因，因为会存在多个入度为 0 的节点，可能出现选取的并不是最优解的情况。</p>
+
+<p>举例：
+[ [ 1, 4] [3, 4] [ 2, 5] [4, 5] [ 4, 6] [ 5, 6]]
+K = 2</p>
+
+<blockquote><p>当第一次选取的为 1，2 时，并不是最优解
+必须选取 1， 3 或者  2，4 才可</p></blockquote>
+
+<!-- more -->
+
+
+<h1>方案一</h1>
+
+<p>以 bitmask 来记录当前学习的课程，动态规划来得到最合理的安排（即最小的用时）</p>
+
+<ol>
+<li>全部课程修完， 则用 dp[ 2 ** n - 1] 来表示。</li>
+<li>全部的状态为 0 -> 2 ** n - 1</li>
+</ol>
+
+
+<h2>前置 - 依赖关系</h2>
+
+<p>这一步需要记录依赖关系的状态数据</p>
+
+<blockquote><p>将依赖的前置课程，以二进制中 1 的状态进行存储
+依赖关系 i, pre
+preq[I-1]  |=  1 &lt;&lt; (pre - 1)</p></blockquote>
+
+<h2>状态转移</h2>
+
+<h3>1. 定义状态</h3>
+
+<p>dp[i] 表示当前的课程组合学习，所需要的最小步数</p>
+
+<blockquote><p>i 的范围  0 -> 2 ** n - 1
+dp[0] = 0</p></blockquote>
+
+<h3>2. 寻找当前可以学习的课程</h3>
+
+<p>如： 当前的状态 i ，需要根据 i ，寻找当前可以学习的课程。
+因为前面已经知道了每门课程的前置课程内容。
+判断其前置课程是否已经满足，可通过如下的二进制操作来判断：
+<code>
+i &amp; pre[j] = pre[j]
+</code>
+当满足上述等式时，表示当前课程 j 可以进行学习了。</p>
+
+<p>这一步中，可将所有满足的课程采用二进制移位的方式，记录在一个数字 tolearn 中。
+如课程 j 现在可以学习了，则
+<code>
+tolearn |= 1 &lt;&lt; j
+</code></p>
+
+<h3>3. 学习当前满足的课程组合</h3>
+
+<p>题目中限制了当前只能学习 k 门课程。
+所以需要遍历得到  tolearn 中可以学习的课程组合，即是寻找其二进制中存在 1 的组合数目，并满足 1 的个数需要小于等于 k 。</p>
+
+<p>这里可通过如下代码得到其子组合：
+<code>python
+s = tolearn
+while s:
+    s = (s - 1) &amp; tolearn
+</code></p>
+
+<blockquote><p>具体可以查看： <a href="https://cp-algorithms.com/algebra/all-submasks.html">Submask Enumeration  - Competitive Programming Algorithms</a></p></blockquote>
+
+<p>这里需要计算 s 中二进制 1 的个数，需要小于等于 k ，得到满足的 s 后，状态转移方程为 ：
+<code>python
+dp[ i | s ]  = min (dp [ i | s ] ,  dp[i] + 1)
+</code></p>
+
+<h2>代码实现</h2>
+
+<pre><code class="python">
+def minNumberOfSemesters(self, n: int, dependencies: List[List[int]], k: int) -&gt; int:
+    from collections import defaultdict
+    dep = defaultdict(int)
+    # 保存当前课程的前置依赖关系
+    for [pre, cur] in dependencies:
+        dep[cur - 1] |= 1 &lt;&lt; (pre - 1)
+    # 满足当前状态的 i, 所需要的最小步数
+    dp = [n] * (1 &lt;&lt; n)
+    dp[0] = 0
+    for i in range(1 &lt;&lt; n):
+        # 获取当前 i 可以学的前置课程。
+        to_learn = 0
+        for j in range(n):
+              if (1 &lt;&lt; j) &amp; i: continue
+            if i &amp; dep[j] == dep[j]:
+                to_learn |= 1 &lt;&lt; j
+        to_learn &amp;= ~i
+        s = to_learn
+
+        while s &gt; 0:
+            if bin(s).count("1") &lt;= k:
+                dp[i | s] = min(dp[i | s], dp[i] + 1)
+                # s 的二进制包含 1 的子集集合
+            s = (s - 1) &amp; to_learn
+        # print(i, ex)
+    return dp[-1]
+</code></pre>
+
+<h1>方案二</h1>
+
+<p>此方案主要优化这个子组合的获取。
+<strong>思路</strong>：
+1. 获取当前可以学习的课程，将其放置在 list 数组中
+2. 判断 list 数组的大小，若其长度小于等于 k 值，则全部学习
+3. 若 List 数组的长度大于 k 值，利用 Python 的 itertools 库中的 combination 来获取长度为 k 的组合数。</p>
+
+<pre><code class="python">    def minNumberOfSemesters(self, n: int, dependencies: List[List[int]], k: int) -&gt; int:
+        from collections import defaultdict
+        from itertools import combinations
+        dep = defaultdict(int)
+        # 保存当前课程的前置依赖关系
+        for [pre, cur] in dependencies:
+            dep[cur - 1] |= 1 &lt;&lt; (pre - 1)
+        # 满足当前状态的 i, 所需要的最小步数
+        dp = [n] * (1 &lt;&lt; n)
+        dp[0] = 0
+        for i in range(1 &lt;&lt; n):
+            to_learn_list = []
+            for j in range(n):
+                if (1 &lt;&lt; j) &amp; i: continue
+                if i &amp; dep[j] == dep[j]:
+                    to_learn_list.append(j)
+            if len(to_learn_list) &lt;= k:
+                s = 0
+                for j in to_learn_list:
+                    s |= 1 &lt;&lt; j
+                dp[i | s] = min(dp[i | s], dp[i] + 1)
+            else:
+                for sub_list in combinations(to_learn_list, k):
+                    s = 0
+                    for j in sub_list:
+                        s |= 1 &lt;&lt; j
+                    dp[i | s] = min(dp[i | s], dp[i] + 1)
+        return dp[-1]
+</code></pre>
+
+<h1>方案二</h1>
+
+<p>将状态的一次遍历，转化 bfs 的思想来完成。</p>
+
+<pre><code class="python">class Solution:
+    def minNumberOfSemesters(self, n: int, dependencies: List[List[int]], k: int) -&gt; int:
+        from collections import defaultdict
+        from itertools import combinations
+        dep = defaultdict(int)
+        # 保存当前课程的前置依赖关系
+        for [pre, cur] in dependencies:
+            dep[cur - 1] |= 1 &lt;&lt; (pre - 1)
+        # 满足当前状态的 i, 所需要的最小步数
+        dp = [n] * (1 &lt;&lt; n)
+        dp[0] = 0
+        from collections import deque
+        queue = deque()
+        queue.append((0, 0))
+        while queue:
+            (pre, step) = queue.pop()
+            to_learn_list = []
+            for j in range(n):
+                if (1 &lt;&lt; j) &amp; pre: continue
+                if pre &amp; dep[j] == dep[j]:
+                    to_learn_list.append(j)
+            if len(to_learn_list) &lt;= k:
+                s = 0
+                for j in to_learn_list:
+                    s |= 1 &lt;&lt; j
+                if dp[pre | s] &gt; dp[pre] + 1:
+                    dp[pre | s] =  dp[pre] + 1
+                    queue.append((pre | s, dp[pre|s]))
+            else:
+                for sub_list in combinations(to_learn_list, k):
+                    s = 0
+                    for j in sub_list:
+                        s |= 1 &lt;&lt; j
+                    if dp[pre | s] &gt; dp[pre] + 1:
+                        dp[pre | s] = min(dp[pre | s], dp[pre] + 1)
+                        queue.append((pre | s, dp[pre | s]))
+            # print(pre)
+        return dp[-1]
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[891. Sum of Subsequence Width]]></title>
+    <link href="http://alighters.github.io/blog/blog/2020/09/20/891-sum-of-subsequence-width/"/>
+    <updated>2020-09-20T22:54:00+08:00</updated>
+    <id>http://alighters.github.io/blog/blog/2020/09/20/891-sum-of-subsequence-width</id>
+    <content type="html"><![CDATA[<h1>demo</h1>
+
+<p>1  -> 0
+1, 2 -> 1
+1, 2, 3 ->  （多出4中组合，1 和 2 选或者不选）</p>
+
+<blockquote><p>多出的结果：（1， 3） （2， 3）（1，2， 3） 总和为 2 + 1 + 2 = 5
+可看出选择 1 时的数目，取决于 1 到 3 之前的数目，取其 2 的幂数。（此种情况下， 2 <strong> 1 = 2）
+可得： 2 </strong> 1 = 2    2 * （3 - 1） = 4<br/>
+            2 ** 0 = 1     1 * （3 - 2） = 1</p></blockquote>
+
+<!-- more -->
+
+
+<h1>目标</h1>
+
+<p>假设有 1，2 ，3， 4 的数据，如何一次循环后，找出不同的子序列的 “宽度”（最大值 - 最小值）</p>
+
+<p>1，2     ->    ( w1 -> 1)
+1,  2, 3     -> (w1 -> 1     w2 -> 2)
+1, 2, 3, 5     -> (w2 ->1     w3 -> 2        w4 -> 4)
+1，2，3， 5， 8 -> (w3 -> 1     w5-> 2  w6 -> 4    w7 -> 8)
+如何在一次循环中找出这些不同的宽度值。</p>
+
+<h1>思路</h1>
+
+<p>通过集合记录上次的值。
+循环遍历排序后的数组，当新加入一个数后，计算其与前一个所得的差值，根据此差值更新当前集合中的宽度及数值</p>
+
+<p>参考 <a href="https://leetcode-cn.com/problems/sum-of-subsequence-widths/solution/pai-xu-shu-xue-by-lucifer1004">力扣</a> 只考虑当前的元素，计算其对结果的影响。</p>
+
+<h1>代码</h1>
+
+<pre><code class="python">
+class Solution:
+    def sumSubseqWidths(self, A: List[int]) -&gt; int:
+        A.sort()
+        ans = 0
+        N = len(A)
+        map2 = [1]
+        for i in range(1, N):
+            map2.append(map2[i - 1] * 2)
+        for i in range(N):
+            left = map2[i]
+            right = map2[N - i - 1]
+            ans += (left - right) * A[i]
+        return ans % (10 ** 9 + 7)
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[1562. Find Latest Group of Size M]]></title>

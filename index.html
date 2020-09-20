@@ -9,7 +9,10 @@
   <meta name="author" content="alighters">
 
   
-  <meta name="description" content="思路 主要在于每次通过数组 arr 中的值，进行将 “0“ 变为 ”1“，从而寻找出现连续的 1 值，问题就在于如何记录此时所出现的连续的 “1” 的字符串的长度。 （注意，这里不能再去循环遍历，肯定会超时。） 前置 n 表示数组的长度 ">
+  <meta name="description" content="问题 拓扑排序在此题不适合的原因，因为会存在多个入度为 0 的节点，可能出现选取的并不是最优解的情况。 举例：
+[ [ 1, 4] [3, 4] [ 2, 5] [4, 5] [ 4, 6] [ 5, 6]]
+K = 2 当第一次选取的为 1，2 时，并不是最优解
+必须选取 1， 3 或者 2，4 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +81,98 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2020/09/20/1494-parallel-courses-ii/">1494. Parallel Courses II</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2020-09-20T23:04:00+08:00'><span class='date'>2020-09-20</span> <span class='time'>11:04 pm</span></time>
+        
+           | <a href="/blog/2020/09/20/1494-parallel-courses-ii/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2020/09/20/1494-parallel-courses-ii/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h1>问题</h1>
+
+<p>拓扑排序在此题不适合的原因，因为会存在多个入度为 0 的节点，可能出现选取的并不是最优解的情况。</p>
+
+<p>举例：
+[ [ 1, 4] [3, 4] [ 2, 5] [4, 5] [ 4, 6] [ 5, 6]]
+K = 2</p>
+
+<blockquote><p>当第一次选取的为 1，2 时，并不是最优解
+必须选取 1， 3 或者  2，4 才可</p></blockquote>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2020/09/20/1494-parallel-courses-ii/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2020/09/20/891-sum-of-subsequence-width/">891. Sum of Subsequence Width</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2020-09-20T22:54:00+08:00'><span class='date'>2020-09-20</span> <span class='time'>10:54 pm</span></time>
+        
+           | <a href="/blog/2020/09/20/891-sum-of-subsequence-width/#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog/blog/2020/09/20/891-sum-of-subsequence-width/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h1>demo</h1>
+
+<p>1  -> 0
+1, 2 -> 1
+1, 2, 3 ->  （多出4中组合，1 和 2 选或者不选）</p>
+
+<blockquote><p>多出的结果：（1， 3） （2， 3）（1，2， 3） 总和为 2 + 1 + 2 = 5
+可看出选择 1 时的数目，取决于 1 到 3 之前的数目，取其 2 的幂数。（此种情况下， 2 <strong> 1 = 2）
+可得： 2 </strong> 1 = 2    2 * （3 - 1） = 4<br/>
+            2 ** 0 = 1     1 * （3 - 2） = 1</p></blockquote>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2020/09/20/891-sum-of-subsequence-width/">继续阅读 &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -409,88 +504,6 @@ ios: 自带的 javascriptcore</p>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2017-01-23T13:34:00+08:00'><span class='date'>2017-01-23</span> <span class='time'>1:34 pm</span></time>
-        
-           | <a href="/blog/2017/01/23/reactnative-seprate-js/#disqus_thread"
-             data-disqus-identifier="http://alighters.github.io/blog/blog/2017/01/23/reactnative-seprate-js/">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>项目中遇到了要使 JS 与客户端分离的问题，即由前端开发人员开发相应的 JS 部分，客户端人员（Android 和 Ios）开发对应的 Native 部分。</p>
-
-<p>不过幸运的是，React Native 对这部分内容已经做了支持。主要的思想是，当进入手机端的 RN 界面时，通过加载 JS 部分生成的 bundle，来达到 JS 测试开发的目的。</p>
-
-<p>在前端开发时，需要通过启动 npm server，连接手机端的 server，来进行开发。 下面对其中的过程做一笔记：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2017/01/23/reactnative-seprate-js/">继续阅读 &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-<time class='entry-date' datetime='2017-01-16T15:00:00+08:00'><span class='date'>2017-01-16</span> <span class='time'>3:00 pm</span></time>
-        
-           | <a href="/blog/2017/01/16/multidex-generate/#disqus_thread"
-             data-disqus-identifier="http://alighters.github.io/blog/blog/2017/01/16/multidex-generate/">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>介绍</h2>
-
-<p>在 Android 开发中，提到 65536 问题，就不得不提 Multidex 的解决方案。具体问题就是在 Android 打包的期间，是需要对 java 文件编译成 class 文件，class 文件信息过多而又冗余，这就再经过一步合并变成 dex 文件的过程（这一步是 dx 工具来处理的），其才是 Davilk 虚拟机加载识别的东西。而单个 dex 文件，其对方法数、字段数做了限制，即不能超过 65536，这便是问题的由来了。</p>
-
-<p>当然，解决这个问题也是很简单的。在 gradle 中启用 Multidex，在 application 中添加 Multidex.install 方法。乍以为万事大吉了，但在我们项目中还是遇到了 65536 的问题，主要是因为项目太大，在生成 mainDex 的过程中，还是出现了方法数超过了 65536 的问题，解决这个问题的思想是要将 mainDex 中的一些类移除至其它的 dex 中。那这一步，应该怎么玩呢？这里先看一些 dx 工具为我们提供了什么？</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2017/01/16/multidex-generate/">继续阅读 &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/page2">&larr; Older</a>
@@ -510,6 +523,14 @@ ios: 自带的 javascriptcore</p>
 <section>
   <h1>最近文章</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2020/09/20/1494-parallel-courses-ii/">1494. Parallel Courses II</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/20/891-sum-of-subsequence-width/">891. Sum of Subsequence Width</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2020/09/13/1562-find-latest-group-of-size-m/">1562. Find Latest Group of Size M</a>
@@ -541,14 +562,6 @@ ios: 自带的 javascriptcore</p>
     
       <li class="post">
         <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2017/01/23/reactnative-seprate-js/">React Native 之 JS 分离</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2017/01/16/multidex-generate/">理解 Multidex 生成</a>
       </li>
     
   </ul>

@@ -1,0 +1,603 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>1494. Parallel Courses II - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="1494. Parallel Courses II 2020-09-20 11:04 pm | Comments 问题 拓扑排序在此题不适合的原因，因为会存在多个入度为 0 的节点，可能出现选取的并不是最优解的情况。 举例：
+[ [ 1, 4] [3, 4] [ 2, 5] [4, 5] [ 4 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2020/09/20/1494-parallel-courses-ii/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">1494. Parallel Courses II</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2020-09-20T23:04:00+08:00'><span class='date'>2020-09-20</span> <span class='time'>11:04 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h1>问题</h1>
+
+<p>拓扑排序在此题不适合的原因，因为会存在多个入度为 0 的节点，可能出现选取的并不是最优解的情况。</p>
+
+<p>举例：
+[ [ 1, 4] [3, 4] [ 2, 5] [4, 5] [ 4, 6] [ 5, 6]]
+K = 2</p>
+
+<blockquote><p>当第一次选取的为 1，2 时，并不是最优解
+必须选取 1， 3 或者  2，4 才可</p></blockquote>
+
+<!-- more -->
+
+
+<h1>方案一</h1>
+
+<p>以 bitmask 来记录当前学习的课程，动态规划来得到最合理的安排（即最小的用时）</p>
+
+<ol>
+<li>全部课程修完， 则用 dp[ 2 ** n - 1] 来表示。</li>
+<li>全部的状态为 0 -> 2 ** n - 1</li>
+</ol>
+
+
+<h2>前置 - 依赖关系</h2>
+
+<p>这一步需要记录依赖关系的状态数据</p>
+
+<blockquote><p>将依赖的前置课程，以二进制中 1 的状态进行存储
+依赖关系 i, pre
+preq[I-1]  |=  1 &lt;&lt; (pre - 1)</p></blockquote>
+
+<h2>状态转移</h2>
+
+<h3>1. 定义状态</h3>
+
+<p>dp[i] 表示当前的课程组合学习，所需要的最小步数</p>
+
+<blockquote><p>i 的范围  0 -> 2 ** n - 1
+dp[0] = 0</p></blockquote>
+
+<h3>2. 寻找当前可以学习的课程</h3>
+
+<p>如： 当前的状态 i ，需要根据 i ，寻找当前可以学习的课程。
+因为前面已经知道了每门课程的前置课程内容。
+判断其前置课程是否已经满足，可通过如下的二进制操作来判断：</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>i & pre[j] = pre[j]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当满足上述等式时，表示当前课程 j 可以进行学习了。</p>
+
+<p>这一步中，可将所有满足的课程采用二进制移位的方式，记录在一个数字 tolearn 中。
+如课程 j 现在可以学习了，则</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>tolearn |= 1 &lt;&lt; j</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>3. 学习当前满足的课程组合</h3>
+
+<p>题目中限制了当前只能学习 k 门课程。
+所以需要遍历得到  tolearn 中可以学习的课程组合，即是寻找其二进制中存在 1 的组合数目，并满足 1 的个数需要小于等于 k 。</p>
+
+<p>这里可通过如下代码得到其子组合：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">s</span> <span class="o">=</span> <span class="n">tolearn</span>
+</span><span class='line'><span class="k">while</span> <span class="n">s</span><span class="p">:</span>
+</span><span class='line'>  <span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="n">s</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">tolearn</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<blockquote><p>具体可以查看： <a href="https://cp-algorithms.com/algebra/all-submasks.html">Submask Enumeration  - Competitive Programming Algorithms</a></p></blockquote>
+
+<p>这里需要计算 s 中二进制 1 的个数，需要小于等于 k ，得到满足的 s 后，状态转移方程为 ：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">dp</span><span class="p">[</span> <span class="n">i</span> <span class="o">|</span> <span class="n">s</span> <span class="p">]</span>  <span class="o">=</span> <span class="nb">min</span> <span class="p">(</span><span class="n">dp</span> <span class="p">[</span> <span class="n">i</span> <span class="o">|</span> <span class="n">s</span> <span class="p">]</span> <span class="p">,</span>  <span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>代码实现</h2>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">def</span> <span class="nf">minNumberOfSemesters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">dependencies</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span> <span class="n">k</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span class='line'>    <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+</span><span class='line'>    <span class="n">dep</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span class='line'>    <span class="c"># 保存当前课程的前置依赖关系</span>
+</span><span class='line'>    <span class="k">for</span> <span class="p">[</span><span class="n">pre</span><span class="p">,</span> <span class="n">cur</span><span class="p">]</span> <span class="ow">in</span> <span class="n">dependencies</span><span class="p">:</span>
+</span><span class='line'>        <span class="n">dep</span><span class="p">[</span><span class="n">cur</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">pre</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>    <span class="c"># 满足当前状态的 i, 所需要的最小步数</span>
+</span><span class='line'>    <span class="n">dp</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">n</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">dp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">n</span><span class="p">):</span>
+</span><span class='line'>        <span class="c"># 获取当前 i 可以学的前置课程。</span>
+</span><span class='line'>        <span class="n">to_learn</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+</span><span class='line'>            <span class="k">if</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">j</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">i</span><span class="p">:</span> <span class="k">continue</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">i</span> <span class="o">&amp;</span> <span class="n">dep</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">==</span> <span class="n">dep</span><span class="p">[</span><span class="n">j</span><span class="p">]:</span>
+</span><span class='line'>                <span class="n">to_learn</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">j</span>
+</span><span class='line'>        <span class="n">to_learn</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="n">i</span>
+</span><span class='line'>        <span class="n">s</span> <span class="o">=</span> <span class="n">to_learn</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">while</span> <span class="n">s</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span class='line'>            <span class="k">if</span> <span class="nb">bin</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s">&quot;1&quot;</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">k</span><span class="p">:</span>
+</span><span class='line'>                <span class="n">dp</span><span class="p">[</span><span class="n">i</span> <span class="o">|</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">dp</span><span class="p">[</span><span class="n">i</span> <span class="o">|</span> <span class="n">s</span><span class="p">],</span> <span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>                <span class="c"># s 的二进制包含 1 的子集集合</span>
+</span><span class='line'>            <span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="n">s</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">to_learn</span>
+</span><span class='line'>        <span class="c"># print(i, ex)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">dp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>方案二</h1>
+
+<p>此方案主要优化这个子组合的获取。
+<strong>思路</strong>：
+1. 获取当前可以学习的课程，将其放置在 list 数组中
+2. 判断 list 数组的大小，若其长度小于等于 k 值，则全部学习
+3. 若 List 数组的长度大于 k 值，利用 Python 的 itertools 库中的 combination 来获取长度为 k 的组合数。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">def</span> <span class="nf">minNumberOfSemesters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">dependencies</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span> <span class="n">k</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span class='line'>    <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+</span><span class='line'>    <span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">combinations</span>
+</span><span class='line'>    <span class="n">dep</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span class='line'>    <span class="c"># 保存当前课程的前置依赖关系</span>
+</span><span class='line'>    <span class="k">for</span> <span class="p">[</span><span class="n">pre</span><span class="p">,</span> <span class="n">cur</span><span class="p">]</span> <span class="ow">in</span> <span class="n">dependencies</span><span class="p">:</span>
+</span><span class='line'>        <span class="n">dep</span><span class="p">[</span><span class="n">cur</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">pre</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>    <span class="c"># 满足当前状态的 i, 所需要的最小步数</span>
+</span><span class='line'>    <span class="n">dp</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">n</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">dp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">n</span><span class="p">):</span>
+</span><span class='line'>        <span class="n">to_learn_list</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class='line'>        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+</span><span class='line'>            <span class="k">if</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">j</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">i</span><span class="p">:</span> <span class="k">continue</span>
+</span><span class='line'>            <span class="k">if</span> <span class="n">i</span> <span class="o">&amp;</span> <span class="n">dep</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">==</span> <span class="n">dep</span><span class="p">[</span><span class="n">j</span><span class="p">]:</span>
+</span><span class='line'>                <span class="n">to_learn_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">to_learn_list</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">k</span><span class="p">:</span>
+</span><span class='line'>            <span class="n">s</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">to_learn_list</span><span class="p">:</span>
+</span><span class='line'>                <span class="n">s</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">j</span>
+</span><span class='line'>            <span class="n">dp</span><span class="p">[</span><span class="n">i</span> <span class="o">|</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">dp</span><span class="p">[</span><span class="n">i</span> <span class="o">|</span> <span class="n">s</span><span class="p">],</span> <span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>            <span class="k">for</span> <span class="n">sub_list</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="n">to_learn_list</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+</span><span class='line'>                <span class="n">s</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">sub_list</span><span class="p">:</span>
+</span><span class='line'>                    <span class="n">s</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">j</span>
+</span><span class='line'>                <span class="n">dp</span><span class="p">[</span><span class="n">i</span> <span class="o">|</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">dp</span><span class="p">[</span><span class="n">i</span> <span class="o">|</span> <span class="n">s</span><span class="p">],</span> <span class="n">dp</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">dp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>方案二</h1>
+
+<p>将状态的一次遍历，转化 bfs 的思想来完成。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">class</span> <span class="nc">Solution</span><span class="p">:</span>
+</span><span class='line'>    <span class="k">def</span> <span class="nf">minNumberOfSemesters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">dependencies</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span> <span class="n">k</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span class='line'>        <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+</span><span class='line'>        <span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">combinations</span>
+</span><span class='line'>        <span class="n">dep</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span class='line'>        <span class="c"># 保存当前课程的前置依赖关系</span>
+</span><span class='line'>        <span class="k">for</span> <span class="p">[</span><span class="n">pre</span><span class="p">,</span> <span class="n">cur</span><span class="p">]</span> <span class="ow">in</span> <span class="n">dependencies</span><span class="p">:</span>
+</span><span class='line'>            <span class="n">dep</span><span class="p">[</span><span class="n">cur</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">pre</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>        <span class="c"># 满足当前状态的 i, 所需要的最小步数</span>
+</span><span class='line'>        <span class="n">dp</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">n</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">dp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>        <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span>
+</span><span class='line'>        <span class="n">queue</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
+</span><span class='line'>        <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+</span><span class='line'>        <span class="k">while</span> <span class="n">queue</span><span class="p">:</span>
+</span><span class='line'>            <span class="p">(</span><span class="n">pre</span><span class="p">,</span> <span class="n">step</span><span class="p">)</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+</span><span class='line'>            <span class="n">to_learn_list</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span class='line'>            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+</span><span class='line'>                <span class="k">if</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">j</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">pre</span><span class="p">:</span> <span class="k">continue</span>
+</span><span class='line'>                <span class="k">if</span> <span class="n">pre</span> <span class="o">&amp;</span> <span class="n">dep</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">==</span> <span class="n">dep</span><span class="p">[</span><span class="n">j</span><span class="p">]:</span>
+</span><span class='line'>                    <span class="n">to_learn_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+</span><span class='line'>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">to_learn_list</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">k</span><span class="p">:</span>
+</span><span class='line'>                <span class="n">s</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">to_learn_list</span><span class="p">:</span>
+</span><span class='line'>                    <span class="n">s</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">j</span>
+</span><span class='line'>                <span class="k">if</span> <span class="n">dp</span><span class="p">[</span><span class="n">pre</span> <span class="o">|</span> <span class="n">s</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">dp</span><span class="p">[</span><span class="n">pre</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+</span><span class='line'>                    <span class="n">dp</span><span class="p">[</span><span class="n">pre</span> <span class="o">|</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span>  <span class="n">dp</span><span class="p">[</span><span class="n">pre</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'>                    <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">pre</span> <span class="o">|</span> <span class="n">s</span><span class="p">,</span> <span class="n">dp</span><span class="p">[</span><span class="n">pre</span><span class="o">|</span><span class="n">s</span><span class="p">]))</span>
+</span><span class='line'>            <span class="k">else</span><span class="p">:</span>
+</span><span class='line'>                <span class="k">for</span> <span class="n">sub_list</span> <span class="ow">in</span> <span class="n">combinations</span><span class="p">(</span><span class="n">to_learn_list</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+</span><span class='line'>                    <span class="n">s</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>                    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">sub_list</span><span class="p">:</span>
+</span><span class='line'>                        <span class="n">s</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">j</span>
+</span><span class='line'>                    <span class="k">if</span> <span class="n">dp</span><span class="p">[</span><span class="n">pre</span> <span class="o">|</span> <span class="n">s</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">dp</span><span class="p">[</span><span class="n">pre</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+</span><span class='line'>                        <span class="n">dp</span><span class="p">[</span><span class="n">pre</span> <span class="o">|</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">dp</span><span class="p">[</span><span class="n">pre</span> <span class="o">|</span> <span class="n">s</span><span class="p">],</span> <span class="n">dp</span><span class="p">[</span><span class="n">pre</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>                        <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">pre</span> <span class="o">|</span> <span class="n">s</span><span class="p">,</span> <span class="n">dp</span><span class="p">[</span><span class="n">pre</span> <span class="o">|</span> <span class="n">s</span><span class="p">]))</span>
+</span><span class='line'>            <span class="c"># print(pre)</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">dp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2020/09/20/1494-parallel-courses-ii/">/blog/2020/09/20/1494-parallel-courses-ii/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2020-09-20T23:04:00+08:00'><span class='date'>2020-09-20</span> <span class='time'>11:04 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/leetcode/'>leetcode</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2020/09/20/1494-parallel-courses-ii/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2020/09/20/1494-parallel-courses-ii/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2020/09/20/891-sum-of-subsequence-width/" title="Previous Post: 891. Sum of Subsequence Width">&laquo; 891. Sum of Subsequence Width</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/files/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2020/09/20/1494-parallel-courses-ii/">1494. Parallel Courses II</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/20/891-sum-of-subsequence-width/">891. Sum of Subsequence Width</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1562-find-latest-group-of-size-m/">1562. Find Latest Group of Size M</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1498-number-of-subsequences-that-satisfy-the-given-sum-condition/">1498. Number of Subsequences That Satisfy the Given Sum Condition</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1524-number-of-sub-arrays-with-odd-sum/">1524. Number of Sub-arrays With Odd Sum</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/25/understand-imageloader/">图片加载理解之 UIL</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2020 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2020/09/20/1494-parallel-courses-ii/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2020/09/20/1494-parallel-courses-ii/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
