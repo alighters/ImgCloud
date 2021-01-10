@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
+<loc>http://alighters.github.io/blog/blog/2021/01/10/neovim-initial-setup/</loc>
+<lastmod>2021-01-10T23:36:00+08:00</lastmod>
+</url>
+<url>
 <loc>http://alighters.github.io/blog/blog/2020/09/20/1494-parallel-courses-ii/</loc>
 <lastmod>2020-09-20T23:04:00+08:00</lastmod>
 </url>
@@ -225,15 +229,6 @@
 <loc>http://alighters.github.io/blog/blog/categories/leetcode/</loc>
 </url>
 <url>
-<loc>http://alighters.github.io/blog/page2/</loc>
-</url>
-<url>
-<loc>http://alighters.github.io/blog/page3/</loc>
-</url>
-<url>
-<loc>http://alighters.github.io/blog/page4/</loc>
-</url>
-<url>
-<loc>http://alighters.github.io/blog/page5/</loc>
+<loc>http://alighters.github.io/blog/blog/categories/vim/</loc>
 </url>
 </urlset>

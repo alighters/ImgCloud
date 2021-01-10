@@ -1,0 +1,569 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Neovim 初学与配置 - alighters</title>
+  <meta name="author" content="alighters">
+
+  
+  <meta name="description" content="Neovim 初学与配置 2021-01-10 11:36 pm | Comments NeoVim 初学与配置 学习/VIM/NeoVim Install Mac 环境下的安装 1
+brew install nvim 检查 nvim 环境
+在 nvim 下，执行： 1
+:checkhealth &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://alighters.github.io/blog/blog/2021/01/10/neovim-initial-setup/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="alighters" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-77273971-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">alighters</a></h1>
+  
+    <h2>程序、写作、人生</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="alighters.github.io/blog">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">博客</a></li>
+  <li><a href="/blog/archives">目录</a></li>
+  <li><a href="/about">关于</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Neovim 初学与配置</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2021-01-10T23:36:00+08:00'><span class='date'>2021-01-10</span> <span class='time'>11:36 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://alighters.github.io/blog">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h1>NeoVim 初学与配置</h1>
+
+<h1>学习/VIM/NeoVim</h1>
+
+<h2>Install</h2>
+
+<p>Mac 环境下的安装</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>brew install nvim
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<!-- more -->
+
+
+<p>检查 nvim 环境
+在 nvim 下，执行：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>:checkhealth
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Neovim Terminal mode</h2>
+
+<blockquote><p>终端模式          Terminal mode
+终端缓冲区   Terminal Buffer  （指的是一个进程）
+tnoremap      用于创建终端模式下的键映射</p></blockquote>
+
+<h3>1. 开启终端模式</h3>
+
+<p>进入命令行模式，输入如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>:terminal
+</span><span class='line'>:term         （上者的简写）
+</span><span class='line'>:te           <span class="o">(</span>继续简写<span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<blockquote><p>:!{cmd}               命令行模式下，执行命令内容
+:read !{cmd}          将命令执行后的内容，添加至当前缓冲区
+:terminal {cmd}           通过执行终端模式的命令内容，添加至当前缓冲区
+:ls                   查看当前所有缓冲区的进程编号</p>
+
+<p>&lt;C-^>                 切换缓冲区
+:1b                   切换到至第一个缓冲区
+:1bwipeout!           直接关闭第一个缓冲区的内容</p>
+
+<p>:qa!                  退出 neovim，所有终端缓冲区的内容都会被关闭</p></blockquote>
+
+<h3>2. 管理终端缓冲区窗口</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>:terminal <span class="o">{</span>cmd<span class="o">}</span>                当前窗口创建缓冲区
+</span><span class='line'>:split <span class="p">|</span> terminal <span class="o">{</span>cmd<span class="o">}</span>      横向分割创建窗口
+</span><span class='line'>:vsplit <span class="p">|</span> terminal <span class="o">{</span>cmd<span class="o">}</span>     纵向分割创建窗口
+</span><span class='line'>:tabedit <span class="p">|</span> terminal <span class="o">{</span>cmd<span class="o">}</span>        新标签页创建窗口
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>3. 终端缓冲区使用普通模式的命令</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>nvim +terminal
+</span></code></pre></td></tr></table></div></figure>
+
+
+<blockquote><p>打开 nvim，并进入终端模式
+在切回普通模式时，可以执行常用的 vim 键，如 y p 等。执行 p，会将当前寄存器中的内容粘贴至光标处。</p></blockquote>
+
+<p>移动常用的命令：</p>
+
+<blockquote><p>搜索命令 ：如 /duo ，通过 n / N 进行下一处、上一处的跳转</p>
+
+<p>gg            跳到顶部
+G             跳到底部
+<C-y>         向上滚动一行
+<C-e>         向下滚动一行
+<C-u>         向上滚动半页
+<C-d>         向下滚动半页
+<C-f>         向下滚动一页
+<C-b>         向上滚动一页</p>
+
+<p>在显示出的文件路径上，可以通过 gf 命令，在新开的缓冲区中打开此文件。
+&lt;C-^> 可进行切换。</p></blockquote>
+
+<h3>4. 向终端缓冲区发送命令</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>:echo b:terminal_job_id      输出终端缓冲区所在的窗口任务编号
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>:call    jobsend<span class="o">(</span>1, “<span class="se">\&lt;</span>C-c&gt;npm run server<span class="se">\&lt;</span>CR&gt;<span class="err">&quot;</span><span class="o">)</span>       向窗口1发送重启服务的命令
+</span></code></pre></td></tr></table></div></figure>
+
+
+<blockquote><p>参数 2 需要使用双引号</p></blockquote>
+
+<p>创建一个临时命令</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>:command Restart call jobsend<span class="o">(</span>1, <span class="s2">&quot;\&lt;C-c&gt;npm run server\&lt;CR&gt;&quot;</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<h2>Plugins</h2>
+
+<h3>配置 Plug Vim</h3>
+
+<p><a href="[GitHub%20-%20junegunn/vim-plug:%20Minimalist%20Vim%20Plugin%20Manager](https://github.com/junegunn/vim-plug"> Plug vim </a>)</p>
+
+<h4>Auto Install</h4>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='vim'><span class='line'><span class="c">&quot; Install vim-plug if not found</span>
+</span><span class='line'><span class="k">if</span> empty<span class="p">(</span>glob<span class="p">(</span><span class="s1">&#39;~/.vim/autoload/plug.vim&#39;</span><span class="p">))</span>
+</span><span class='line'>  <span class="k">silent</span> <span class="p">!</span>curl <span class="p">-</span>fLo <span class="p">~</span><span class="sr">/.vim/</span>autoload/plug.<span class="k">vim</span> <span class="p">--</span>create<span class="p">-</span>dirs
+</span><span class='line'>    \ https:<span class="sr">//</span>raw.githubusercontent.<span class="k">com</span><span class="sr">/junegunn/</span><span class="k">vim</span><span class="p">-</span>plug<span class="sr">/master/</span>plug.<span class="k">vim</span>
+</span><span class='line'><span class="k">endif</span>
+</span><span class='line'>
+</span><span class='line'><span class="c">&quot; Run PlugInstall if there are missing plugins</span>
+</span><span class='line'><span class="k">autocmd</span> <span class="nb">VimEnter</span> * <span class="k">if</span> len<span class="p">(</span>filter<span class="p">(</span>values<span class="p">(</span><span class="k">g</span>:plugs<span class="p">),</span> <span class="s1">&#39;!isdirectory(v:val.dir)&#39;</span><span class="p">))</span>
+</span><span class='line'>  \<span class="p">|</span> PlugInstall <span class="p">--</span><span class="k">sync</span> <span class="p">|</span> source $MYVIMRC
+</span><span class='line'>\<span class="p">|</span> <span class="k">endif</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>1. Coc.vim</h3>
+
+<h4>Coc Info</h4>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='vim'><span class='line'><span class="p">:</span>CocInfo
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>Coc help</h4>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='vim'><span class='line'><span class="p">:</span><span class="k">h</span> coc<span class="p">-</span>nvim
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>Coc config</h4>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='vim'><span class='line'><span class="p">:</span>CocConfig
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>Install extension</h4>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='vim'><span class='line'><span class="p">:</span>CocInstall coc<span class="p">-</span>json coc<span class="p">-</span>tsserver
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>install python</h4>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='vim'><span class='line'><span class="p">:</span>CocInstall coc<span class="p">-</span>python
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>commands</h4>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='vim'><span class='line'><span class="p">:</span>CocCommand
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>check the log info</h4>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='vim'><span class='line'><span class="p">:</span>CocOpenLog
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Session 管理</h3>
+
+<h4>1. 保存会话</h4>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='vim'><span class='line'><span class="p">:</span><span class="k">mksession</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>2.  加载会话</h4>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='vim'><span class='line'><span class="k">vim</span> <span class="p">-</span>S
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>或者使用 source</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='vim'><span class='line'><span class="p">:</span>source Session.<span class="k">vim</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>3. 自定义会话</h4>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='vim'><span class='line'><span class="p">:</span><span class="k">mksession</span> mysession.<span class="k">vim</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">vim</span> <span class="p">-</span>S mysession.<span class="k">vim</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>4. Obsession Plugin</h4>
+
+<p>tpope/vim-obsession</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='vim'><span class='line'><span class="p">:</span>Obsession <span class="p">(</span>:Obsess<span class="p">)</span>         开启自动记录会话，是一个开关，再次输入会自动关闭
+</span><span class='line'><span class="p">:</span>Obsession<span class="p">!</span> <span class="p">(</span>:Obsess<span class="p">!)</span>        完全关闭自动保存
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>5. 持久化 Undo</h4>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='vim'><span class='line'><span class="k">set</span> <span class="nb">undofile</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>参考资料</h2>
+
+<p><a href="https://medium.com/better-programming/setting-up-neovim-for-web-development-in-2020-d800de3efacd">Setting Up Neovim for Web Development in 2020 | by Dominik Tarnowski | Better Programming | Medium</a></p>
+</div>
+
+
+
+  <blockquote><p>版权归作者所有，转载请注明原文链接：<a href= "/blog/2021/01/10/neovim-initial-setup/">/blog/2021/01/10/neovim-initial-setup/</a></p></blockquote>
+
+  <p class="meta" style="text-align: center;">
+  <span>给 Ta 个打赏吧...</span><br/><br/>
+    <img style="width: 80%;" src="/images/donate.png"/>
+  </p>
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">alighters</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2021-01-10T23:36:00+08:00'><span class='date'>2021-01-10</span> <span class='time'>11:36 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/vim/'>vim</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://alighters.github.io/blog/blog/2021/01/10/neovim-initial-setup/" data-via="david.wei" data-counturl="http://alighters.github.io/blog/blog/2021/01/10/neovim-initial-setup/" >Tweet</a>
+  
+  
+  <div class="g-plusone" data-size="medium"></div>
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2020/09/20/1494-parallel-courses-ii/" title="Previous Post: 1494. Parallel Courses II">&laquo; 1494. Parallel Courses II</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>关于我</h1>
+  <p>Android程序猿，Ruby、React爱好者，Vim党，喜欢简单、看书、思考</p>
+  <p>QQ群：</p>
+  <img src="http://alighters.github.io/files/imgs/android-qq.png"/>
+</section>
+<section>
+  <h1>最近文章</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2021/01/10/neovim-initial-setup/">Neovim 初学与配置</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/20/1494-parallel-courses-ii/">1494. Parallel Courses II</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/20/891-sum-of-subsequence-width/">891. Sum of Subsequence Width</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1562-find-latest-group-of-size-m/">1562. Find Latest Group of Size M</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1498-number-of-subsequences-that-satisfy-the-given-sum-condition/">1498. Number of Subsequences That Satisfy the Given Sum Condition</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2020/09/13/1524-number-of-sub-arrays-with-odd-sum/">1524. Number of Sub-arrays With Odd Sum</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/03/22/docker-config-ssr/">Docker Config Ssr</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/28/react-native-message-theory/">RN 通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/16/leakcanary-learn/">LeakCanary 浅析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/03/02/kotlin-dsl-learn/">Kotlin DSL 学习</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/alighters">@alighters</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'alighters',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  版权 &copy; 2021 - alighters -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'alighters';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://alighters.github.io/blog/blog/2021/01/10/neovim-initial-setup/';
+        var disqus_url = 'http://alighters.github.io/blog/blog/2021/01/10/neovim-initial-setup/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function() {
+      var script = document.createElement('script'); script.type = 'text/javascript'; script.async = true;
+      script.src = 'https://apis.google.com/js/plusone.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(script, s);
+    })();
+  </script>
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

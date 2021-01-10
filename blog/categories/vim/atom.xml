@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Vim | alighters]]></title>
+  <link href="http://alighters.github.io/blog/blog/categories/vim/atom.xml" rel="self"/>
+  <link href="http://alighters.github.io/blog/"/>
+  <updated>2021-01-10T23:40:11+08:00</updated>
+  <id>http://alighters.github.io/blog/</id>
+  <author>
+    <name><![CDATA[alighters]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Neovim 初学与配置]]></title>
+    <link href="http://alighters.github.io/blog/blog/2021/01/10/neovim-initial-setup/"/>
+    <updated>2021-01-10T23:36:00+08:00</updated>
+    <id>http://alighters.github.io/blog/blog/2021/01/10/neovim-initial-setup</id>
+    <content type="html"><![CDATA[<h1>NeoVim 初学与配置</h1>
+
+<h1>学习/VIM/NeoVim</h1>
+
+<h2>Install</h2>
+
+<p>Mac 环境下的安装
+<code>bash
+brew install nvim
+</code></p>
+
+<!-- more -->
+
+
+<p>检查 nvim 环境
+在 nvim 下，执行：
+<code>
+:checkhealth
+</code></p>
+
+<h2>Neovim Terminal mode</h2>
+
+<blockquote><p>终端模式          Terminal mode
+终端缓冲区   Terminal Buffer  （指的是一个进程）
+tnoremap      用于创建终端模式下的键映射</p></blockquote>
+
+<h3>1. 开启终端模式</h3>
+
+<p>进入命令行模式，输入如下：
+<code>
+:terminal
+:term       （上者的简写）
+:te         (继续简写)
+</code></p>
+
+<blockquote><p>:!{cmd}               命令行模式下，执行命令内容
+:read !{cmd}          将命令执行后的内容，添加至当前缓冲区
+:terminal {cmd}           通过执行终端模式的命令内容，添加至当前缓冲区
+:ls                   查看当前所有缓冲区的进程编号</p>
+
+<p>&lt;C-^>                 切换缓冲区
+:1b                   切换到至第一个缓冲区
+:1bwipeout!           直接关闭第一个缓冲区的内容</p>
+
+<p>:qa!                  退出 neovim，所有终端缓冲区的内容都会被关闭</p></blockquote>
+
+<h3>2. 管理终端缓冲区窗口</h3>
+
+<pre><code>:terminal {cmd}             当前窗口创建缓冲区
+:split | terminal {cmd}     横向分割创建窗口
+:vsplit | terminal {cmd}        纵向分割创建窗口
+:tabedit | terminal {cmd}       新标签页创建窗口
+</code></pre>
+
+<h3>3. 终端缓冲区使用普通模式的命令</h3>
+
+<pre><code>nvim +terminal
+</code></pre>
+
+<blockquote><p>打开 nvim，并进入终端模式
+在切回普通模式时，可以执行常用的 vim 键，如 y p 等。执行 p，会将当前寄存器中的内容粘贴至光标处。</p></blockquote>
+
+<p>移动常用的命令：</p>
+
+<blockquote><p>搜索命令 ：如 /duo ，通过 n / N 进行下一处、上一处的跳转</p>
+
+<p>gg            跳到顶部
+G             跳到底部
+<C-y>         向上滚动一行
+<C-e>         向下滚动一行
+<C-u>         向上滚动半页
+<C-d>         向下滚动半页
+<C-f>         向下滚动一页
+<C-b>         向上滚动一页</p>
+
+<p>在显示出的文件路径上，可以通过 gf 命令，在新开的缓冲区中打开此文件。
+&lt;C-^> 可进行切换。</p></blockquote>
+
+<h3>4. 向终端缓冲区发送命令</h3>
+
+<pre><code>:echo b:terminal_job_id     输出终端缓冲区所在的窗口任务编号
+</code></pre>
+
+<pre><code>:call   jobsend(1, “\&lt;C-c&gt;npm run server\&lt;CR&gt;")       向窗口1发送重启服务的命令
+</code></pre>
+
+<blockquote><p>参数 2 需要使用双引号</p></blockquote>
+
+<p>创建一个临时命令
+<code>
+:command Restart call jobsend(1, "\&lt;C-c&gt;npm run server\&lt;CR&gt;")
+</code></p>
+
+<h2>Plugins</h2>
+
+<h3>配置 Plug Vim</h3>
+
+<p><a href="[GitHub%20-%20junegunn/vim-plug:%20Minimalist%20Vim%20Plugin%20Manager](https://github.com/junegunn/vim-plug"> Plug vim </a>)</p>
+
+<h4>Auto Install</h4>
+
+<pre><code class="vim">" Install vim-plug if not found
+if empty(glob('~/.vim/autoload/plug.vim'))
+  silent !curl -fLo ~/.vim/autoload/plug.vim --create-dirs
+    \ https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+endif
+
+" Run PlugInstall if there are missing plugins
+autocmd VimEnter * if len(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
+  \| PlugInstall --sync | source $MYVIMRC
+\| endif
+</code></pre>
+
+<h3>1. Coc.vim</h3>
+
+<h4>Coc Info</h4>
+
+<pre><code>:CocInfo
+</code></pre>
+
+<h4>Coc help</h4>
+
+<pre><code>:h coc-nvim
+</code></pre>
+
+<h4>Coc config</h4>
+
+<pre><code>:CocConfig
+</code></pre>
+
+<h4>Install extension</h4>
+
+<pre><code>:CocInstall coc-json coc-tsserver
+</code></pre>
+
+<h4>install python</h4>
+
+<pre><code>:CocInstall coc-python
+</code></pre>
+
+<h4>commands</h4>
+
+<pre><code>:CocCommand
+</code></pre>
+
+<h4>check the log info</h4>
+
+<pre><code>:CocOpenLog
+</code></pre>
+
+<h3>Session 管理</h3>
+
+<h4>1. 保存会话</h4>
+
+<pre><code>:mksession
+</code></pre>
+
+<h4>2.  加载会话</h4>
+
+<pre><code>vim -S
+</code></pre>
+
+<p>或者使用 source
+<code>
+:source Session.vim
+</code></p>
+
+<h4>3. 自定义会话</h4>
+
+<pre><code>:mksession mysession.vim
+
+vim -S mysession.vim
+</code></pre>
+
+<h4>4. Obsession Plugin</h4>
+
+<p>tpope/vim-obsession</p>
+
+<pre><code>:Obsession (:Obsess)        开启自动记录会话，是一个开关，再次输入会自动关闭
+:Obsession! (:Obsess!)      完全关闭自动保存
+</code></pre>
+
+<h4>5. 持久化 Undo</h4>
+
+<pre><code>set undofile
+</code></pre>
+
+<h2>参考资料</h2>
+
+<p><a href="https://medium.com/better-programming/setting-up-neovim-for-web-development-in-2020-d800de3efacd">Setting Up Neovim for Web Development in 2020 | by Dominik Tarnowski | Better Programming | Medium</a></p>
+]]></content>
+  </entry>
+  
+</feed>
