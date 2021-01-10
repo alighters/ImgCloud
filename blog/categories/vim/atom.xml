@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Vim | alighters]]></title>
   <link href="http://alighters.github.io/blog/blog/categories/vim/atom.xml" rel="self"/>
   <link href="http://alighters.github.io/blog/"/>
-  <updated>2021-01-10T23:41:06+08:00</updated>
+  <updated>2021-01-10T23:44:23+08:00</updated>
   <id>http://alighters.github.io/blog/</id>
   <author>
     <name><![CDATA[alighters]]></name>
@@ -18,11 +18,7 @@
     <link href="http://alighters.github.io/blog/blog/2021/01/10/neovim-initial-setup/"/>
     <updated>2021-01-10T23:36:00+08:00</updated>
     <id>http://alighters.github.io/blog/blog/2021/01/10/neovim-initial-setup</id>
-    <content type="html"><![CDATA[<h1>NeoVim 初学与配置</h1>
-
-<h1>学习/VIM/NeoVim</h1>
-
-<h2>Install</h2>
+    <content type="html"><![CDATA[<h2>Install</h2>
 
 <p>Mac 环境下的安装
 <code>bash
